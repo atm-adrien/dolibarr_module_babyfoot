@@ -113,15 +113,22 @@ if ($action === 'add') {
 	$validator = new GameValidator($db, (int) $conf->entity, $config);
 	$duplicateId = $validator->findRecentDuplicate($mode, (int) $postedScore[1], (int) $postedScore[2], $players);
 
-	// Section 9: tell the user the ranking is about to be adjusted
+	// Section 9: a game older than the most recent one rebuilds the whole chain,
+	// and the user must be told before it happens. Detected BEFORE the insert,
+	// since afterwards the new game is itself part of the timeline.
 	$engine = new RatingEngine($db, (int) $conf->entity, $config);
-	$willRecompute = false;
+	$willRecompute = !$engine->isLatestDate($dateGame);
 
 	if ($game->create($user) > 0) {
 		$game->fetchLines();
 
 		if ($duplicateId > 0) {
 			setEventMessages($langs->trans('BabyfootWarnDuplicate', $duplicateId), null, 'warnings');
+		}
+
+		// Section 9: explicit warning that the ranking has just been adjusted
+		if ($willRecompute) {
+			setEventMessages($langs->trans('BabyfootWarnRecomputeTriggered'), null, 'warnings');
 		}
 
 		// Confirmation message: the Elo change of every player (section 6.1)

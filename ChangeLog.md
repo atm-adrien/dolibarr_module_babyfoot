@@ -44,9 +44,23 @@ Première version.
   facteur planché à 1.0 pour qu'une partie serrée ne réduise jamais K sous sa
   valeur nominale.
 
+### Corrections issues de l'audit
+
+- L'avertissement exigé au § 9 lorsqu'une partie antidatée est saisie n'était pas
+  affiché : la clé de traduction existait mais n'était utilisée nulle part. Ajout
+  de `RatingEngine::isLatestDate()`, qui répond avant l'insertion, là où
+  `isLatest()` exige une partie déjà stockée.
+- Suppression d'un N+1 de requêtes sur le classement et sur les statistiques
+  collectives : les noms de joueurs étaient résolus dans la boucle d'affichage,
+  soit une requête par ligne, et deux par ligne du tableau des duos. Ils sont
+  désormais résolus en une passe avant le rendu, comme le faisait déjà la liste
+  des parties.
+- Suppression du code mort laissé dans l'écran de saisie par l'avertissement
+  oublié.
+
 ### Notes techniques
 
-- 68 tests PHPUnit, 202 assertions, dont les trois critères d'acceptation les
+- 72 tests PHPUnit, 209 assertions, dont les trois critères d'acceptation les
   plus sensibles : +20/-20 sur une première partie, idempotence du recalcul
   complet, et suppression d'une partie ancienne restituant exactement le
   classement qui aurait existé sans elle.

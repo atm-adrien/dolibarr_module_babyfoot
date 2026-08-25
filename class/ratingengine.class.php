@@ -125,25 +125,64 @@ class RatingEngine
 	}
 
 	/**
-	 * Tell whether a game is the most recent validated one (RG-31).
+	 * Tell whether a stored game is the most recent validated one (RG-31).
 	 *
-	 * @param	Game	$game	Game to test
+	 * @param	Game	$game	Game to test, already stored
 	 * @return	bool			True when no validated game is more recent
 	 */
 	public function isLatest(Game $game): bool
 	{
+		return $this->noGameNewerThan((int) $game->date_game, (int) $game->id);
+	}
+
+	/**
+	 * Tell whether a date would land at the end of the timeline.
+	 *
+	 * Meant to be called BEFORE storing a game, so the entry screen can warn the
+	 * user that saving is about to adjust the ranking (section 9). Once stored,
+	 * the game is part of the timeline and isLatest() must be used instead.
+	 *
+	 * @param	int		$dateGame	Timestamp of the game about to be stored
+	 * @return	bool				True when no validated game is more recent
+	 */
+	public function isLatestDate(int $dateGame): bool
+	{
+		return $this->noGameNewerThan($dateGame, 0);
+	}
+
+	/**
+	 * Tell whether no validated game is more recent than the given position.
+	 *
+	 * The comparison follows the replay order of section 8.3: date_game first,
+	 * then rowid. A rowid of 0 means the game does not exist yet, so only the
+	 * date is compared.
+	 *
+	 * @param	int		$dateGame	Timestamp to compare against
+	 * @param	int		$gameId		Rowid of the game, 0 when it is not stored yet
+	 * @return	bool				True when nothing is more recent
+	 */
+	private function noGameNewerThan(int $dateGame, int $gameId): bool
+	{
+		$date = $this->db->idate($dateGame);
+
 		$sql = "SELECT g.rowid";
 		$sql .= " FROM ".$this->db->prefix()."babyfoot_game as g";
 		$sql .= " WHERE g.entity = ".((int) $this->entity);
 		$sql .= " AND g.status = ".((int) Game::STATUS_VALIDATED);
-		$sql .= " AND g.rowid <> ".((int) $game->id);
-		$sql .= " AND (g.date_game > '".$this->db->idate($game->date_game)."'";
-		$sql .= " OR (g.date_game = '".$this->db->idate($game->date_game)."' AND g.rowid > ".((int) $game->id)."))";
+		if ($gameId > 0) {
+			$sql .= " AND g.rowid <> ".((int) $gameId);
+			$sql .= " AND (g.date_game > '".$date."'";
+			$sql .= " OR (g.date_game = '".$date."' AND g.rowid > ".((int) $gameId)."))";
+		} else {
+			// Not stored yet: it will get the highest rowid, so an equal date still
+			// leaves it at the end of the timeline
+			$sql .= " AND g.date_game > '".$date."'";
+		}
 		$sql .= $this->db->plimit(1, 0);
 
 		$resql = $this->db->query($sql);
 		if (!$resql) {
-			dol_syslog('RatingEngine::isLatest '.$this->db->lasterror(), LOG_ERR);
+			dol_syslog('RatingEngine::noGameNewerThan '.$this->db->lasterror(), LOG_ERR);
 			// Safest answer: pretend it is not the latest, which forces a full rebuild
 			return false;
 		}

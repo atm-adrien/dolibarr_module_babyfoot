@@ -45,19 +45,45 @@ $repository = new GlobalStatsRepository($db, (int) $conf->entity);
 $totals = $repository->getTotals();
 
 /**
- * Resolve the display name of a player.
+ * Resolve the display names of a set of players, in one pass.
+ *
+ * Resolving a name inside a display loop would mean one query per row, and the
+ * duo table alone needs two names per row.
  *
  * @param	DoliDB		$db			Database handler
  * @param	Translate	$langs		Translation object
- * @param	int			$userId		Rowid of the Dolibarr user
- * @return	string					Name, escaped for HTML output
+ * @param	int[]		$userIds	Player ids to resolve
+ * @return	array<int,string>		Names indexed by user id, escaped for HTML
  */
-function babyfootStatsPlayerName($db, $langs, $userId)
+function babyfootStatsPlayerNames($db, $langs, array $userIds)
 {
-	$player = new User($db);
-	$name = ($player->fetch((int) $userId) > 0) ? $player->getFullName($langs) : '#'.((int) $userId);
+	$names = array();
 
-	return dol_escape_htmltag($name);
+	foreach ($userIds as $userId) {
+		$userId = (int) $userId;
+		if ($userId <= 0 || isset($names[$userId])) {
+			continue;
+		}
+		$player = new User($db);
+		$label = ($player->fetch($userId) > 0) ? $player->getFullName($langs) : '#'.$userId;
+		$names[$userId] = dol_escape_htmltag($label);
+	}
+
+	return $names;
+}
+
+/**
+ * Return a resolved player name, falling back on the raw id.
+ *
+ * @param	array	$names		Names indexed by user id
+ * @param	int		$userId		Player id
+ * @return	string				Name, escaped for HTML output
+ */
+function babyfootStatsName(array $names, $userId)
+{
+	$userId = (int) $userId;
+
+	return isset($names[$userId]) ? $names[$userId] : ('#'.$userId);
 }
 
 /**
@@ -125,6 +151,24 @@ if ((int) $totals['nb_games'] === 0) {
 	exit;
 }
 
+// Load the data sets first, so every player name is resolved in a single pass
+$mostActive = $repository->getMostActivePlayer(30);
+$duos = $repository->getTopDuos(10);
+$fannies = $repository->getFannyTable();
+
+$userIds = array();
+if (!is_null($mostActive)) {
+	$userIds[] = (int) $mostActive['fk_user'];
+}
+foreach ($duos as $duo) {
+	$userIds[] = (int) $duo['user1'];
+	$userIds[] = (int) $duo['user2'];
+}
+foreach ($fannies as $fanny) {
+	$userIds[] = (int) $fanny['fk_user'];
+}
+$playerNames = babyfootStatsPlayerNames($db, $langs, $userIds);
+
 // Totals
 print '<div class="fichecenter">';
 print '<table class="border centpercent tableforfield">';
@@ -132,13 +176,12 @@ print '<tr><td class="titlefield">'.$langs->trans('BabyfootTotalGames').'</td><t
 print '<tr><td>'.$langs->trans('BabyfootTotalGoals').'</td><td>'.((int) $totals['nb_goals']).'</td></tr>';
 print '<tr><td>'.$langs->trans('BabyfootAvgGoalsPerGame').'</td><td>'.price2num((float) $totals['avg_goals'], 2).'</td></tr>';
 
-$mostActive = $repository->getMostActivePlayer(30);
 print '<tr><td>'.$langs->trans('BabyfootMostActivePlayer').'</td><td>';
 if (is_null($mostActive)) {
 	print '<span class="opacitymedium">'.dol_escape_htmltag($langs->trans('BabyfootNoGameYet')).'</span>';
 } else {
 	print '<a href="'.dol_buildpath('/babyfoot/player_card.php', 1).'?id='.((int) $mostActive['fk_user']).'">';
-	print babyfootStatsPlayerName($db, $langs, (int) $mostActive['fk_user']);
+	print babyfootStatsName($playerNames, $mostActive['fk_user']);
 	print '</a> <span class="opacitymedium">('.((int) $mostActive['nb']).')</span>';
 }
 print '</td></tr>';
@@ -147,7 +190,6 @@ print '<br>';
 
 // Top duos
 print load_fiche_titre($langs->trans('BabyfootTopDuos'), '', '');
-$duos = $repository->getTopDuos(10);
 if (empty($duos)) {
 	print '<div class="opacitymedium">'.dol_escape_htmltag($langs->trans('BabyfootNotEnoughDataDuos', GlobalStatsRepository::MIN_DUO_GAMES)).'</div><br>';
 } else {
@@ -160,7 +202,7 @@ if (empty($duos)) {
 	print '</tr>';
 	foreach ($duos as $duo) {
 		print '<tr class="oddeven">';
-		print '<td>'.babyfootStatsPlayerName($db, $langs, (int) $duo['user1']).' &amp; '.babyfootStatsPlayerName($db, $langs, (int) $duo['user2']).'</td>';
+		print '<td>'.babyfootStatsName($playerNames, $duo['user1']).' &amp; '.babyfootStatsName($playerNames, $duo['user2']).'</td>';
 		print '<td class="center">'.((int) $duo['nb']).'</td>';
 		print '<td class="center">'.((int) $duo['wins']).'</td>';
 		print '<td class="center">'.price2num(((float) $duo['ratio']) * 100, 1).' %</td>';
@@ -175,7 +217,6 @@ babyfootStatsGameTable($repository->getWidestGames(5), 'BabyfootWidestGames', $d
 
 // Fanny table
 print load_fiche_titre($langs->trans('BabyfootFannyTable'), '', '');
-$fannies = $repository->getFannyTable();
 if (empty($fannies)) {
 	print '<div class="opacitymedium">'.dol_escape_htmltag($langs->trans('BabyfootNoFannyYet')).'</div><br>';
 } else {
@@ -188,7 +229,7 @@ if (empty($fannies)) {
 	foreach ($fannies as $row) {
 		print '<tr class="oddeven">';
 		print '<td><a href="'.dol_buildpath('/babyfoot/player_card.php', 1).'?id='.((int) $row['fk_user']).'">';
-		print babyfootStatsPlayerName($db, $langs, (int) $row['fk_user']);
+		print babyfootStatsName($playerNames, $row['fk_user']);
 		print '</a></td>';
 		print '<td class="center">'.((int) $row['given']).'</td>';
 		print '<td class="center">'.((int) $row['taken']).'</td>';

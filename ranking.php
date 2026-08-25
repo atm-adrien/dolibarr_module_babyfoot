@@ -72,19 +72,36 @@ if ($mode !== BabyfootConfig::MODE_ALL) {
 }
 
 /**
- * Resolve the display name of a player.
+ * Resolve the display names of every player of the screen, in one pass.
+ *
+ * Called once, before rendering: resolving a name inside the display loop would
+ * mean one query per row, which section 9 forbids.
  *
  * @param	DoliDB		$db			Database handler
  * @param	Translate	$langs		Translation object
- * @param	int			$userId		Rowid of the Dolibarr user
- * @return	string					Name, escaped for HTML output
+ * @param	array		$rowsets	Lists of rows holding a fk_user key
+ * @return	array<int,string>		Names indexed by user id, escaped for HTML
  */
-function babyfootRankingPlayerName($db, $langs, $userId)
+function babyfootRankingPlayerNames($db, $langs, array $rowsets)
 {
-	$player = new User($db);
-	$name = ($player->fetch((int) $userId) > 0) ? $player->getFullName($langs) : '#'.((int) $userId);
+	$names = array();
 
-	return dol_escape_htmltag($name);
+	foreach ($rowsets as $rows) {
+		if (!is_array($rows) || empty($rows)) {
+			continue;
+		}
+		foreach ($rows as $row) {
+			$userId = (int) $row['fk_user'];
+			if (isset($names[$userId])) {
+				continue;
+			}
+			$player = new User($db);
+			$label = ($player->fetch($userId) > 0) ? $player->getFullName($langs) : '#'.$userId;
+			$names[$userId] = dol_escape_htmltag($label);
+		}
+	}
+
+	return $names;
 }
 
 /**
@@ -95,11 +112,10 @@ function babyfootRankingPlayerName($db, $langs, $userId)
  * @param	int			$variation		Rank variation since the last game
  * @param	int|null	$streak			Streak to display, null to use the row one
  * @param	bool		$isUnranked		Render as an unranked player
- * @param	DoliDB		$db				Database handler
- * @param	Translate	$langs			Translation object
+ * @param	array		$names			Player names indexed by user id
  * @return	void
  */
-function babyfootRankingRow($row, $position, $variation, $streak, $isUnranked, $db, $langs)
+function babyfootRankingRow($row, $position, $variation, $streak, $isUnranked, array $names)
 {
 	$cssRank = '';
 	if (!$isUnranked && $position < 3) {
@@ -122,8 +138,9 @@ function babyfootRankingRow($row, $position, $variation, $streak, $isUnranked, $
 	}
 	print '</td>';
 
-	print '<td><a href="'.dol_buildpath('/babyfoot/player_card.php', 1).'?id='.((int) $row['fk_user']).'">';
-	print babyfootRankingPlayerName($db, $langs, (int) $row['fk_user']);
+	$userId = (int) $row['fk_user'];
+	print '<td><a href="'.dol_buildpath('/babyfoot/player_card.php', 1).'?id='.$userId.'">';
+	print isset($names[$userId]) ? $names[$userId] : ('#'.$userId);
 	print '</a></td>';
 
 	print '<td class="center"><strong>'.((int) $row['elo']).'</strong>';
@@ -152,6 +169,10 @@ function babyfootRankingRow($row, $position, $variation, $streak, $isUnranked, $
 /*
  * View
  */
+
+// Resolve every player name once, before rendering anything: doing it inside the
+// display loop would mean one query per row, which section 9 forbids
+$playerNames = babyfootRankingPlayerNames($db, $langs, array($ranking, $unranked));
 
 llxHeader('', $langs->trans('BabyfootMenuRanking'), '', '', 0, 0, array(), array());
 
@@ -216,7 +237,7 @@ foreach ($ranking as $position => $row) {
 	$userId = (int) $row['fk_user'];
 	$variation = isset($variations[$userId]) ? (int) $variations[$userId] : 0;
 	$streak = ($mode === BabyfootConfig::MODE_ALL) ? null : (isset($overallStreaks[$userId]) ? (int) $overallStreaks[$userId] : 0);
-	babyfootRankingRow($row, $position, $variation, $streak, false, $db, $langs);
+	babyfootRankingRow($row, $position, $variation, $streak, false, $playerNames);
 }
 
 print '</table>';
@@ -247,7 +268,7 @@ if (!empty($unranked)) {
 	foreach ($unranked as $position => $row) {
 		$userId = (int) $row['fk_user'];
 		$streak = ($mode === BabyfootConfig::MODE_ALL) ? null : (isset($overallStreaks[$userId]) ? (int) $overallStreaks[$userId] : 0);
-		babyfootRankingRow($row, $position, 0, $streak, true, $db, $langs);
+		babyfootRankingRow($row, $position, 0, $streak, true, $playerNames);
 	}
 
 	print '</table>';

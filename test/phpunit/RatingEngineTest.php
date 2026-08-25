@@ -564,6 +564,60 @@ class RatingEngineTest extends CommonClassTest
 	}
 
 	/**
+	 * isLatestDate() answers before the game exists, so the entry screen can warn
+	 * the user that saving is about to adjust the ranking (section 9).
+	 *
+	 * @return void
+	 */
+	public function testIsLatestDateOnEmptyHistory()
+	{
+		$this->wipeHistory();
+
+		$this->assertTrue($this->engine()->isLatestDate(dol_now() - 86400));
+	}
+
+	/**
+	 * A date after the last stored game stays at the end of the timeline.
+	 *
+	 * @return void
+	 */
+	public function testIsLatestDateAfterTheLastGame()
+	{
+		$this->wipeHistory();
+		$this->playGame(1, 2, 10, 3, 3600);
+
+		$this->assertTrue($this->engine()->isLatestDate(dol_now() - 1800));
+	}
+
+	/**
+	 * A backdated date is detected as NOT terminal, which is what triggers the
+	 * warning and the full rebuild.
+	 *
+	 * @return void
+	 */
+	public function testIsLatestDateBeforeTheLastGame()
+	{
+		$this->wipeHistory();
+		$this->playGame(1, 2, 10, 3, 3600);
+
+		$this->assertFalse($this->engine()->isLatestDate(dol_now() - 7200));
+	}
+
+	/**
+	 * A game entered for the very same second as the last one is still terminal:
+	 * it will receive a higher rowid, which is the secondary replay criterion.
+	 *
+	 * @return void
+	 */
+	public function testIsLatestDateOnTheSameSecond()
+	{
+		$this->wipeHistory();
+		$game = $this->playGame(1, 2, 10, 3, 3600);
+
+		$this->assertTrue($this->engine()->isLatestDate((int) $game->date_game));
+	}
+
+	/**
 	 * The sentinel lock row is never exposed as a player.
 	 *
 	 * @return void
