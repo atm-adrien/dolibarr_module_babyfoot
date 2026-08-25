@@ -119,3 +119,42 @@ BabyfootReopenGame = Rouvrir la partie
 BabyfootConfirmCancelGame = Annuler la partie %s ? Elle restera dans l'historique mais ne comptera plus dans le classement.
 BabyfootConfirmReopenGame = Rouvrir la partie %s ? Elle comptera de nouveau dans le classement.
 BabyfootConfirmDeleteGame = Supprimer définitivement la partie %s ? L'annulation est préférable si vous souhaitez conserver l'historique.
+
+# Ranking screen
+BabyfootRank = Rang
+BabyfootWinsLosses = V / D
+BabyfootRatio = Ratio
+BabyfootGoalDiff = Diff. buts
+BabyfootPeriod30 = 30 jours
+BabyfootPeriod90 = 90 jours
+BabyfootPeriodYear = 1 an
+BabyfootPeriodAll = Tout
+BabyfootNoRankingYet = Aucun classement pour le moment, aucune partie n'a encore été enregistrée
+BabyfootNobodyRankedYet = Personne n'a encore atteint les %s parties nécessaires pour être classé
+BabyfootUnrankedPlayers = Joueurs non classés (%s)
+
+# Player card
+BabyfootPlayerNotFound = Ce joueur est introuvable et n'a aucune partie enregistrée
+BabyfootEloHistory = Évolution de l'Elo
+BabyfootAvgGoalDiff = moyenne par partie
+BabyfootBestTeammate = Meilleur coéquipier
+BabyfootNemesis = Bête noire
+BabyfootFavouriteVictim = Victime préférée
+BabyfootNotEnoughData = Pas assez de données, il faut au moins %s parties ensemble
+BabyfootLastGames = Dernières parties
+
+# Collective statistics
+BabyfootTotalGames = Nombre de parties
+BabyfootTotalGoals = Nombre de buts
+BabyfootAvgGoalsPerGame = Moyenne de buts par partie
+BabyfootMostActivePlayer = Joueur le plus actif (30 jours)
+BabyfootTopDuos = Meilleurs duos en 2 contre 2
+BabyfootDuo = Duo
+BabyfootNotEnoughDataDuos = Aucun duo n'a encore atteint les %s parties nécessaires
+BabyfootTightestGames = Parties les plus serrées
+BabyfootWidestGames = Parties les plus larges
+BabyfootGoalGap = Écart
+BabyfootFannyTable = Tableau des fannys
+BabyfootNoFannyYet = Aucune fanny pour le moment
+BabyfootGamesByWeekday = Parties par jour de la semaine
+BabyfootGamesByHour = Parties par tranche horaire

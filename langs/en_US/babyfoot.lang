@@ -119,3 +119,42 @@ BabyfootReopenGame = Reopen the game
 BabyfootConfirmCancelGame = Cancel game %s? It stays in the history but no longer counts in the ranking.
 BabyfootConfirmReopenGame = Reopen game %s? It will count in the ranking again.
 BabyfootConfirmDeleteGame = Permanently delete game %s? Cancelling is preferable if you want to keep the history.
+
+# Ranking screen
+BabyfootRank = Rank
+BabyfootWinsLosses = W / L
+BabyfootRatio = Ratio
+BabyfootGoalDiff = Goal diff.
+BabyfootPeriod30 = 30 days
+BabyfootPeriod90 = 90 days
+BabyfootPeriodYear = 1 year
+BabyfootPeriodAll = All
+BabyfootNoRankingYet = No ranking yet, no game has been recorded so far
+BabyfootNobodyRankedYet = Nobody reached the %s games required to be ranked yet
+BabyfootUnrankedPlayers = Unranked players (%s)
+
+# Player card
+BabyfootPlayerNotFound = This player cannot be found and has no recorded game
+BabyfootEloHistory = Elo over time
+BabyfootAvgGoalDiff = average per game
+BabyfootBestTeammate = Best teammate
+BabyfootNemesis = Nemesis
+BabyfootFavouriteVictim = Favourite victim
+BabyfootNotEnoughData = Not enough data, at least %s games together are required
+BabyfootLastGames = Last games
+
+# Collective statistics
+BabyfootTotalGames = Games played
+BabyfootTotalGoals = Goals scored
+BabyfootAvgGoalsPerGame = Average goals per game
+BabyfootMostActivePlayer = Most active player (30 days)
+BabyfootTopDuos = Best 2v2 duos
+BabyfootDuo = Duo
+BabyfootNotEnoughDataDuos = No duo reached the %s games required yet
+BabyfootTightestGames = Tightest games
+BabyfootWidestGames = Widest games
+BabyfootGoalGap = Gap
+BabyfootFannyTable = Fanny table
+BabyfootNoFannyYet = No fanny so far
+BabyfootGamesByWeekday = Games per weekday
+BabyfootGamesByHour = Games per hour
