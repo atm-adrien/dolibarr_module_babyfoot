@@ -68,3 +68,14 @@ BABYFOOT_MIN_GAMES_RANKED = Minimum games to appear in the ranking
 BABYFOOT_EDIT_DELAY = Author edit delay, in hours
 BABYFOOT_PREFILL_CURRENT_USER = Prefill the logged-in user as first player
 BABYFOOT_DEFAULT_MODE = Default game mode
+
+# Validation errors
+BabyfootErrUnknownMode = Unknown game mode
+BabyfootErrPlayerCount = The number of players per team does not match the game mode
+BabyfootErrDuplicatePlayer = A player cannot appear twice in the same game
+BabyfootErrScoreRange = Scores must range from 0 to %s
+BabyfootErrScoreExact = The winning team must reach exactly %s points
+BabyfootErrDrawNotAllowed = Draws are not allowed
+BabyfootErrFutureDate = The game date cannot be in the future
+BabyfootErrValidation = The game could not be saved
+BabyfootWarnDuplicate = An identical game was recorded less than 5 minutes ago (%s)
