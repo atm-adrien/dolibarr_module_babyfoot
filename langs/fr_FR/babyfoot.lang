@@ -79,3 +79,22 @@ BabyfootErrDrawNotAllowed = Les matchs nuls ne sont pas autorisés
 BabyfootErrFutureDate = La date de la partie ne peut pas être dans le futur
 BabyfootErrValidation = La partie n'a pas pu être enregistrée
 BabyfootWarnDuplicate = Une partie identique a été enregistrée il y a moins de 5 minutes (%s)
+
+# Rating engine
+BabyfootElo = Elo
+BabyfootNbGames = Parties
+BabyfootNbWins = Victoires
+BabyfootNbLosses = Défaites
+BabyfootNbDraws = Nuls
+BabyfootGoalsFor = Buts marqués
+BabyfootGoalsAgainst = Buts encaissés
+BabyfootFannyGiven = Fannys infligées
+BabyfootFannyTaken = Fannys subies
+BabyfootCurrentStreak = Série en cours
+BabyfootBestStreak = Meilleure série
+BabyfootEloPeak = Elo maximum atteint
+BabyfootDateLastGame = Dernière partie
+BabyfootErrNoPlayer = La partie ne contient aucun joueur
+BabyfootErrLockFailed = Impossible d'obtenir le verrou de calcul du classement
+BabyfootErrRecomputeFailed = Le recalcul du classement a échoué, aucune modification n'a été enregistrée
+BabyfootWarnRecomputeTriggered = Cette partie est antérieure à la plus récente : le classement va être ajusté

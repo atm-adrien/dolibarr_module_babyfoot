@@ -79,3 +79,22 @@ BabyfootErrDrawNotAllowed = Draws are not allowed
 BabyfootErrFutureDate = The game date cannot be in the future
 BabyfootErrValidation = The game could not be saved
 BabyfootWarnDuplicate = An identical game was recorded less than 5 minutes ago (%s)
+
+# Rating engine
+BabyfootElo = Elo
+BabyfootNbGames = Games
+BabyfootNbWins = Wins
+BabyfootNbLosses = Losses
+BabyfootNbDraws = Draws
+BabyfootGoalsFor = Goals scored
+BabyfootGoalsAgainst = Goals conceded
+BabyfootFannyGiven = Fannies inflicted
+BabyfootFannyTaken = Fannies suffered
+BabyfootCurrentStreak = Current streak
+BabyfootBestStreak = Best streak
+BabyfootEloPeak = Highest Elo reached
+BabyfootDateLastGame = Last game
+BabyfootErrNoPlayer = The game holds no player
+BabyfootErrLockFailed = Could not acquire the ranking computation lock
+BabyfootErrRecomputeFailed = The ranking rebuild failed, nothing was saved
+BabyfootWarnRecomputeTriggered = This game predates the most recent one: the ranking will be adjusted
