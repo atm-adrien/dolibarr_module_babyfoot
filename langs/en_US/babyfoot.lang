@@ -98,3 +98,24 @@ BabyfootErrNoPlayer = The game holds no player
 BabyfootErrLockFailed = Could not acquire the ranking computation lock
 BabyfootErrRecomputeFailed = The ranking rebuild failed, nothing was saved
 BabyfootWarnRecomputeTriggered = This game predates the most recent one: the ranking will be adjusted
+
+# Screens
+BabyfootNewGame = New game
+BabyfootSaveGame = Save the game
+BabyfootGameSaved = Game %s saved
+BabyfootGameUpdated = Game %s updated
+BabyfootGameCancelled = Game %s cancelled
+BabyfootGameReopened = Game %s reopened
+BabyfootGameDeleted = Game deleted
+BabyfootGameNotFound = This game does not exist or has been deleted
+BabyfootChangeDate = Change the date and time
+BabyfootScore = Score
+BabyfootDraw = Draw
+BabyfootMyGames = My games
+BabyfootNoGameYet = No game recorded yet
+BabyfootRecordFirstGame = Record the first game
+BabyfootCancelGame = Cancel the game
+BabyfootReopenGame = Reopen the game
+BabyfootConfirmCancelGame = Cancel game %s? It stays in the history but no longer counts in the ranking.
+BabyfootConfirmReopenGame = Reopen game %s? It will count in the ranking again.
+BabyfootConfirmDeleteGame = Permanently delete game %s? Cancelling is preferable if you want to keep the history.

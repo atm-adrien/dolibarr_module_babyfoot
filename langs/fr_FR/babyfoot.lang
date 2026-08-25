@@ -98,3 +98,24 @@ BabyfootErrNoPlayer = La partie ne contient aucun joueur
 BabyfootErrLockFailed = Impossible d'obtenir le verrou de calcul du classement
 BabyfootErrRecomputeFailed = Le recalcul du classement a échoué, aucune modification n'a été enregistrée
 BabyfootWarnRecomputeTriggered = Cette partie est antérieure à la plus récente : le classement va être ajusté
+
+# Screens
+BabyfootNewGame = Nouvelle partie
+BabyfootSaveGame = Enregistrer la partie
+BabyfootGameSaved = Partie %s enregistrée
+BabyfootGameUpdated = Partie %s modifiée
+BabyfootGameCancelled = Partie %s annulée
+BabyfootGameReopened = Partie %s rouverte
+BabyfootGameDeleted = Partie supprimée
+BabyfootGameNotFound = Cette partie n'existe pas ou a été supprimée
+BabyfootChangeDate = Modifier la date et l'heure
+BabyfootScore = Score
+BabyfootDraw = Match nul
+BabyfootMyGames = Mes parties
+BabyfootNoGameYet = Aucune partie enregistrée pour le moment
+BabyfootRecordFirstGame = Enregistrer la première partie
+BabyfootCancelGame = Annuler la partie
+BabyfootReopenGame = Rouvrir la partie
+BabyfootConfirmCancelGame = Annuler la partie %s ? Elle restera dans l'historique mais ne comptera plus dans le classement.
+BabyfootConfirmReopenGame = Rouvrir la partie %s ? Elle comptera de nouveau dans le classement.
+BabyfootConfirmDeleteGame = Supprimer définitivement la partie %s ? L'annulation est préférable si vous souhaitez conserver l'historique.
