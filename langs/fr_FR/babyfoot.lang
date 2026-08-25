@@ -1,0 +1,70 @@
+# Copyright (C) 2026 ATM Consulting <support@atm-consulting.fr>
+# Module babyfoot - French translations
+
+# Module
+ModuleBabyfootName = Babyfoot
+ModuleBabyfootDesc = Enregistrement des parties de babyfoot et classement Elo
+BabyfootModuleDescription = Enregistrement des parties de babyfoot et classement Elo
+BabyfootModuleDescriptionLong = Saisie rapide des parties de babyfoot en 1 contre 1 ou 2 contre 2, classement Elo par mode de jeu, statistiques individuelles et collectives.
+BabyfootBoxRankingNote = Classement babyfoot et dernières parties
+
+# Documentation tab
+babyfootDocumentation = Documentation
+babyfootDocumentationFileNotFound = Le fichier de documentation docs/configuration.md est introuvable
+
+# Rights
+BabyfootRightRead = Consulter les parties, le classement et les statistiques
+BabyfootRightCreate = Saisir une partie
+BabyfootRightModifyOwn = Modifier ou annuler une partie que l'on a saisie, dans le délai imparti
+BabyfootRightModifyAll = Modifier, annuler ou supprimer toute partie
+BabyfootRightAdmin = Configurer le module et lancer un recalcul du classement
+
+# Menus
+BabyfootMenuTop = Babyfoot
+BabyfootMenuNewGame = Nouvelle partie
+BabyfootMenuGames = Parties
+BabyfootMenuRanking = Classement
+BabyfootMenuStats = Statistiques
+
+# Objects
+BabyfootGame = Partie
+BabyfootGames = Parties
+BabyfootPlayer = Joueur
+BabyfootTeam = Camp
+BabyfootTeam1 = Camp bleu
+BabyfootTeam2 = Camp rouge
+BabyfootIsWinner = Vainqueur
+BabyfootDateGame = Date de la partie
+BabyfootMode = Mode
+Babyfoot1v1 = 1 contre 1
+Babyfoot2v2 = 2 contre 2
+BabyfootRankingOverall = Général
+BabyfootScoreTeam1 = Score camp bleu
+BabyfootScoreTeam2 = Score camp rouge
+BabyfootWinnerTeam = Camp vainqueur
+BabyfootEloBefore = Elo avant
+BabyfootEloAfter = Elo après
+BabyfootEloDelta = Variation Elo
+BabyfootEloAllBefore = Elo général avant
+BabyfootEloAllAfter = Elo général après
+BabyfootEloAllDelta = Variation Elo général
+BabyfootStatusValidated = Validée
+BabyfootStatusCanceled = Annulée
+
+# Numbering model
+BabyfootNumRefStandardDesc = Renvoie un numéro au format %s, remis à zéro chaque mois
+
+# Settings
+BabyfootSetup = Configuration du module Babyfoot
+BABYFOOT_SCORE_MAX = Score maximum d'une partie
+BABYFOOT_SCORE_EXACT = Le camp gagnant doit atteindre exactement le score maximum
+BABYFOOT_ALLOW_DRAW = Autoriser les matchs nuls
+BABYFOOT_ELO_INITIAL = Elo de départ
+BABYFOOT_ELO_K = Coefficient K des joueurs confirmés
+BABYFOOT_ELO_K_NOVICE = Coefficient K des débutants
+BABYFOOT_ELO_NOVICE_GAMES = Nombre de parties avant de quitter le statut de débutant
+BABYFOOT_ELO_MARGIN = Pondérer le coefficient K par l'écart de buts
+BABYFOOT_MIN_GAMES_RANKED = Nombre de parties minimum pour figurer au classement
+BABYFOOT_EDIT_DELAY = Délai de modification par l'auteur, en heures
+BABYFOOT_PREFILL_CURRENT_USER = Pré-positionner l'utilisateur connecté comme premier joueur
+BABYFOOT_DEFAULT_MODE = Mode de jeu proposé par défaut

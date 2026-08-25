@@ -1,0 +1,70 @@
+# Copyright (C) 2026 ATM Consulting <support@atm-consulting.fr>
+# Module babyfoot - English translations
+
+# Module
+ModuleBabyfootName = Table football
+ModuleBabyfootDesc = Table football game recording and Elo ranking
+BabyfootModuleDescription = Table football game recording and Elo ranking
+BabyfootModuleDescriptionLong = Quick entry of table football games in 1v1 or 2v2, Elo ranking per game mode, individual and collective statistics.
+BabyfootBoxRankingNote = Table football ranking and latest games
+
+# Documentation tab
+babyfootDocumentation = Documentation
+babyfootDocumentationFileNotFound = Documentation file docs/configuration.md not found
+
+# Rights
+BabyfootRightRead = Read games, ranking and statistics
+BabyfootRightCreate = Record a game
+BabyfootRightModifyOwn = Modify or cancel a game you recorded, within the allowed delay
+BabyfootRightModifyAll = Modify, cancel or delete any game
+BabyfootRightAdmin = Configure the module and run a ranking recompute
+
+# Menus
+BabyfootMenuTop = Table football
+BabyfootMenuNewGame = New game
+BabyfootMenuGames = Games
+BabyfootMenuRanking = Ranking
+BabyfootMenuStats = Statistics
+
+# Objects
+BabyfootGame = Game
+BabyfootGames = Games
+BabyfootPlayer = Player
+BabyfootTeam = Team
+BabyfootTeam1 = Blue team
+BabyfootTeam2 = Red team
+BabyfootIsWinner = Winner
+BabyfootDateGame = Game date
+BabyfootMode = Mode
+Babyfoot1v1 = 1v1
+Babyfoot2v2 = 2v2
+BabyfootRankingOverall = Overall
+BabyfootScoreTeam1 = Blue team score
+BabyfootScoreTeam2 = Red team score
+BabyfootWinnerTeam = Winning team
+BabyfootEloBefore = Elo before
+BabyfootEloAfter = Elo after
+BabyfootEloDelta = Elo change
+BabyfootEloAllBefore = Overall Elo before
+BabyfootEloAllAfter = Overall Elo after
+BabyfootEloAllDelta = Overall Elo change
+BabyfootStatusValidated = Validated
+BabyfootStatusCanceled = Cancelled
+
+# Numbering model
+BabyfootNumRefStandardDesc = Returns a reference using the %s mask, reset every month
+
+# Settings
+BabyfootSetup = Table football module setup
+BABYFOOT_SCORE_MAX = Maximum score of a game
+BABYFOOT_SCORE_EXACT = The winning team must reach exactly the maximum score
+BABYFOOT_ALLOW_DRAW = Allow draws
+BABYFOOT_ELO_INITIAL = Initial Elo rating
+BABYFOOT_ELO_K = K factor of confirmed players
+BABYFOOT_ELO_K_NOVICE = K factor of novice players
+BABYFOOT_ELO_NOVICE_GAMES = Number of games before leaving novice status
+BABYFOOT_ELO_MARGIN = Weight the K factor by the goal difference
+BABYFOOT_MIN_GAMES_RANKED = Minimum games to appear in the ranking
+BABYFOOT_EDIT_DELAY = Author edit delay, in hours
+BABYFOOT_PREFILL_CURRENT_USER = Prefill the logged-in user as first player
+BABYFOOT_DEFAULT_MODE = Default game mode
