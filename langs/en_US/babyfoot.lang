@@ -158,3 +158,21 @@ BabyfootFannyTable = Fanny table
 BabyfootNoFannyYet = No fanny so far
 BabyfootGamesByWeekday = Games per weekday
 BabyfootGamesByHour = Games per hour
+
+# Admin tools
+BabyfootTools = Tools
+BabyfootRecomputeRanking = Rebuild the whole ranking
+BabyfootRecomputeHelp = Resets the ranking and replays every validated game in chronological order. The operation is idempotent and transactional.
+BabyfootConfirmRecompute = Rebuild the whole ranking from the %s validated games?
+BabyfootRecomputeDone = Ranking rebuilt: %s games replayed in %s seconds
+BabyfootRecomputeUseCli = %s games: use the command line script to avoid a PHP execution timeout
+BabyfootCheckConsistency = Check consistency
+BabyfootCheckConsistencyHelp = Compares the stored ranking to a theoretical replay and reports the drifts without fixing them.
+BabyfootConsistencyOk = The stored ranking is consistent, no drift found
+BabyfootConsistencyDrift = %s drift(s) found. Nothing was fixed: run a full rebuild to resolve them.
+BabyfootStoredValue = Stored value
+BabyfootExpectedValue = Expected value
+
+# Dashboard box
+BabyfootBoxRankingLabel = Table football ranking
+BabyfootYourRank = Your rank

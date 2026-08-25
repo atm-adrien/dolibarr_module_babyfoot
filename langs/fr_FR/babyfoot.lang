@@ -158,3 +158,21 @@ BabyfootFannyTable = Tableau des fannys
 BabyfootNoFannyYet = Aucune fanny pour le moment
 BabyfootGamesByWeekday = Parties par jour de la semaine
 BabyfootGamesByHour = Parties par tranche horaire
+
+# Admin tools
+BabyfootTools = Outils
+BabyfootRecomputeRanking = Recalculer l'intégralité du classement
+BabyfootRecomputeHelp = Remet à zéro le classement et rejoue toutes les parties validées par ordre chronologique. L'opération est idempotente et transactionnelle.
+BabyfootConfirmRecompute = Recalculer l'intégralité du classement à partir des %s parties validées ?
+BabyfootRecomputeDone = Classement recalculé : %s parties rejouées en %s secondes
+BabyfootRecomputeUseCli = %s parties : utilisez le script en ligne de commande pour éviter un dépassement du temps d'exécution PHP
+BabyfootCheckConsistency = Vérifier la cohérence
+BabyfootCheckConsistencyHelp = Compare le classement stocké à un recalcul théorique et signale les écarts sans les corriger.
+BabyfootConsistencyOk = Le classement stocké est cohérent, aucun écart détecté
+BabyfootConsistencyDrift = %s écart(s) détecté(s). Aucune correction n'a été appliquée : lancez un recalcul complet pour les résoudre.
+BabyfootStoredValue = Valeur stockée
+BabyfootExpectedValue = Valeur attendue
+
+# Dashboard box
+BabyfootBoxRankingLabel = Classement babyfoot
+BabyfootYourRank = Votre classement

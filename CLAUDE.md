@@ -101,6 +101,18 @@ un tableau résolu, jamais `$conf`.
 - `class/techatm.class.php` est **vendorisé** par `team-ai-scaffold techatm` et produit 14 erreurs
   PHP CodeSniffer (PHPDoc et visibilités manquantes) sur le gate `lint` d'ATM lui-même. Ne pas le
   corriger sans le signaler : il serait écrasé au prochain scaffold.
+- **`ModeleBoxes::showBox()` strippe les balises HTML** d'une cellule `text`, sauf si le texte
+  commence par `<img`, `<div` ou `<span`, ou si la cellule porte `'asis' => 1`. Pour un lien,
+  utiliser le mécanisme natif `'url' => ...` + `'text' => 'libellé en clair'` : construire soi-même
+  un `<a href>` produit un lien silencieusement supprimé à l'affichage.
+- **`showBox()` met en cache le rendu 15 minutes** sur disque (`DOL_DATA_ROOT/users/temp/widgets`),
+  avec une clé qui ne dépend pas des données. Pour tester le widget, supprimer
+  `box-box_babyfoot_ranking*` entre deux appels, sinon on relit le rendu précédent.
+- **`CommonObject::__clone()` itère `$this->lines` de 0 à `count - 1`.** Toute méthode remplissant
+  `lines` doit donc retourner une liste indexée numériquement, jamais un tableau associatif :
+  `setStatusCommon()` clone l'objet pour construire `oldcopy` et échouerait.
+- `fetchCommon()` retourne le **rowid** quand il trouve, pas `1`. Le contrat des `fetch()` du module
+  est donc `>0` trouvé, `0` non trouvé, `<0` erreur.
 - Le K du calcul Elo est lu sur `nb_games` **du mode concerné**. Un joueur peut donc être novice en
   1v1 et confirmé en `all` sur la même partie : les deltas des deux lignes diffèrent. C'est voulu.
 - `recomputeAll()` ouvre sa propre transaction et peut être appelée depuis celle de `Game::create()`.
