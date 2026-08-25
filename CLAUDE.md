@@ -87,10 +87,20 @@ un tableau résolu, jamais `$conf`.
 
 ## Pièges connus
 
+- **`$this->const` : le 7ᵉ élément (`deleteonunactive`) doit valoir `0`.** À `1`, la désactivation
+  du module supprime les constantes et un paramétrage personnalisé est perdu à la réactivation —
+  ce que le critère d'acceptation de la spec interdit explicitement. Vérifié par un cycle
+  désactivation/réactivation avec `BABYFOOT_SCORE_MAX` forcé à 7.
+- **Tester l'activation/désactivation dans des processus PHP séparés.** Enchaîner
+  `unActivateModule()` puis `activateModule()` dans le même processus renvoie `nbmodules = 0` :
+  `$conf` est mis en cache en mémoire. Ce n'est pas un bug du module.
 - `get_next_value()` du core attend un nom de table **sans** préfixe. C'est le seul endroit du
   module où un nom de table s'écrit sans `$db->prefix()`.
 - `rowid`, `ref`, `mode` et `status` déclenchent le gate `sqlfluff-lint` (mots-clés réservés). Les
   trois premiers sont imposés par `CommonObject` : commiter avec `SKIP_HOOKS="sqlfluff-lint"`.
+- `class/techatm.class.php` est **vendorisé** par `team-ai-scaffold techatm` et produit 14 erreurs
+  PHP CodeSniffer (PHPDoc et visibilités manquantes) sur le gate `lint` d'ATM lui-même. Ne pas le
+  corriger sans le signaler : il serait écrasé au prochain scaffold.
 - Le K du calcul Elo est lu sur `nb_games` **du mode concerné**. Un joueur peut donc être novice en
   1v1 et confirmé en `all` sur la même partie : les deltas des deux lignes diffèrent. C'est voulu.
 - `recomputeAll()` ouvre sa propre transaction et peut être appelée depuis celle de `Game::create()`.

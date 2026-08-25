@@ -48,7 +48,7 @@ function babyfootAdminPrepareHead(): array
 	$head[$h][2] = 'documentation';
 	$h++;
 
-	$head[$h][0] = dol_buildpath('/babyfoot/admin/about.php', 1);
+	$head[$h][0] = dol_buildpath('/babyfoot/admin/babyfoot_about.php', 1);
 	$head[$h][1] = $langs->trans('About');
 	$head[$h][2] = 'about';
 	$h++;
