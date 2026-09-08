@@ -54,7 +54,7 @@ print load_fiche_titre($langs->trans($page_name), $linkback);
 $head = babyfootAdminPrepareHead();
 
 $notab = -1;
-print dol_get_fiche_head($head, 'about', $langs->trans('ModuleBabyfootName'), $notab, 'babyfoot@babyfoot');
+print dol_get_fiche_head($head, 'about', $langs->trans('ModuleBabyfootName'), $notab, 'fa-futbol');
 print dol_get_fiche_end($notab);
 
 require_once __DIR__ . '/../class/techatm.class.php';

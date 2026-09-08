@@ -49,7 +49,7 @@ class Game extends CommonObject
 	public $module = 'babyfoot';
 
 	/** @var string Picto of the object */
-	public $picto = 'babyfoot@babyfoot';
+	public $picto = '^fa-futbol';
 
 	/** @var int Does this object support extrafields */
 	public $isextrafieldmanaged = 0;
@@ -162,7 +162,7 @@ class Game extends CommonObject
 		$entity = !empty($this->entity) ? (int) $this->entity : (int) $conf->entity;
 
 		// RG-01 to RG-06: refuse before touching the database
-		$validator = new GameValidator($this->db, $entity, $config);
+		$validator = new GameValidator($this->db, $entity);
 		$this->validationErrors = $validator->validate(
 			(string) $this->mode,
 			(int) $this->score_team1,
@@ -222,7 +222,7 @@ class Game extends CommonObject
 	{
 		$config = BabyfootConfig::resolve();
 
-		$validator = new GameValidator($this->db, (int) $this->entity, $config);
+		$validator = new GameValidator($this->db, (int) $this->entity);
 		$this->validationErrors = $validator->validate(
 			(string) $this->mode,
 			(int) $this->score_team1,
@@ -378,25 +378,15 @@ class Game extends CommonObject
 	/**
 	 * Tell whether a user may edit, cancel or delete this game (RG-32).
 	 *
+	 * Neither the author of the game nor the age of the record matters: correcting
+	 * a game is a single permission, held or not.
+	 *
 	 * @param	User	$user	User to test
 	 * @return	bool			True when the user is allowed
 	 */
 	public function canBeEditedBy(User $user): bool
 	{
-		if ($user->hasRight('babyfoot', 'modify_all')) {
-			return true;
-		}
-		if (!$user->hasRight('babyfoot', 'modify_own')) {
-			return false;
-		}
-		if ((int) $this->fk_user_creat !== (int) $user->id) {
-			return false;
-		}
-
-		$config = BabyfootConfig::resolve();
-		$deadline = (int) $this->date_creation + ((int) $config['edit_delay'] * 3600);
-
-		return dol_now() <= $deadline;
+		return (bool) $user->hasRight('babyfoot', 'modify_all');
 	}
 
 	/**

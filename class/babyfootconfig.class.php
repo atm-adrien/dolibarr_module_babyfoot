@@ -47,6 +47,12 @@ class BabyfootConfig
 	/** @var int Number of players per team in double mode */
 	const PLAYERS_2V2 = 2;
 
+	/** @var int Goals a game is always played to (RG-03, RG-04) */
+	const SCORE_MAX = 10;
+
+	/** @var int K factor of the Elo formula, identical for every player (RG-15) */
+	const ELO_K = 40;
+
 	/**
 	 * Return the real game modes, excluding the overall pseudo mode.
 	 *
@@ -88,7 +94,12 @@ class BabyfootConfig
 	/**
 	 * Resolve every module setting into a plain array.
 	 *
-	 * @return	array{score_max:int,score_exact:bool,allow_draw:bool,elo_initial:int,elo_k:int,elo_k_novice:int,elo_novice_games:int,elo_margin:bool,min_games_ranked:int,edit_delay:int,prefill_current_user:bool,default_mode:string}	Resolved settings
+	 * Only what an office may legitimately want to change lives here. The scoring
+	 * rules and the K factor are constants of this class: a game is played to
+	 * SCORE_MAX, the winner must reach it, a draw is impossible, and every player
+	 * shares the same K.
+	 *
+	 * @return	array{elo_initial:int,prefill_current_user:bool,default_mode:string}	Resolved settings
 	 */
 	public static function resolve(): array
 	{
@@ -98,38 +109,19 @@ class BabyfootConfig
 		}
 
 		return array(
-			'score_max' => getDolGlobalInt('BABYFOOT_SCORE_MAX', 10),
-			'score_exact' => (bool) getDolGlobalInt('BABYFOOT_SCORE_EXACT', 1),
-			'allow_draw' => (bool) getDolGlobalInt('BABYFOOT_ALLOW_DRAW', 0),
 			'elo_initial' => getDolGlobalInt('BABYFOOT_ELO_INITIAL', 1000),
-			'elo_k' => getDolGlobalInt('BABYFOOT_ELO_K', 24),
-			'elo_k_novice' => getDolGlobalInt('BABYFOOT_ELO_K_NOVICE', 40),
-			'elo_novice_games' => getDolGlobalInt('BABYFOOT_ELO_NOVICE_GAMES', 15),
-			'elo_margin' => (bool) getDolGlobalInt('BABYFOOT_ELO_MARGIN', 0),
-			'min_games_ranked' => getDolGlobalInt('BABYFOOT_MIN_GAMES_RANKED', 5),
-			'edit_delay' => getDolGlobalInt('BABYFOOT_EDIT_DELAY', 24),
 			'prefill_current_user' => (bool) getDolGlobalInt('BABYFOOT_PREFILL_CURRENT_USER', 1),
 			'default_mode' => $defaultMode,
 		);
 	}
 
 	/**
-	 * Build an EloCalculator from the resolved settings.
+	 * Build an EloCalculator.
 	 *
-	 * @param	array|null		$config		Result of resolve(), resolved again when null
-	 * @return	EloCalculator				Calculator ready to use
+	 * @return	EloCalculator	Calculator ready to use
 	 */
-	public static function createCalculator(?array $config = null): EloCalculator
+	public static function createCalculator(): EloCalculator
 	{
-		if (is_null($config)) {
-			$config = self::resolve();
-		}
-
-		return new EloCalculator(
-			(int) $config['elo_k'],
-			(int) $config['elo_k_novice'],
-			(int) $config['elo_novice_games'],
-			(bool) $config['elo_margin']
-		);
+		return new EloCalculator(self::ELO_K);
 	}
 }

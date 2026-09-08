@@ -59,7 +59,7 @@ class RankingRepository
 	 * variation of the period.
 	 *
 	 * @param	string	$mode			'1v1', '2v2' or 'all'
-	 * @param	int		$minGames		Games required to be ranked (RG-19)
+	 * @param	int		$minGames		Games required to appear, 0 for every player
 	 * @param	int		$dateFrom		Start timestamp, 0 for no lower bound
 	 * @param	int		$dateTo			End timestamp, 0 for no upper bound
 	 * @return	array					Ranked rows, best first
@@ -67,22 +67,88 @@ class RankingRepository
 	public function getRanking(string $mode, int $minGames, int $dateFrom = 0, int $dateTo = 0): array
 	{
 		if ($dateFrom <= 0 && $dateTo <= 0) {
-			return $this->getRankingFromCache($mode, $minGames, false);
+			return $this->getRankingFromCache($mode, $minGames);
 		}
 
 		return $this->getRankingForPeriod($mode, $minGames, $dateFrom, $dateTo);
 	}
 
 	/**
-	 * Return the players not ranked yet, below the minimum number of games (RG-19).
+	 * Return every player who has already played, for the player directory.
 	 *
-	 * @param	string	$mode			'1v1', '2v2' or 'all'
-	 * @param	int		$minGames		Games required to be ranked
-	 * @return	array					Unranked rows
+	 * Reads the 'all' line of each player, which decision D11 makes the reference
+	 * one. The user labels are carried by the rows so the calling screen never has
+	 * to fetch a User per line. The join is a LEFT one on purpose: a player whose
+	 * Dolibarr user has been deleted still weighs in the ranking, so the directory
+	 * must keep listing them, exactly as the ranking screen does.
+	 *
+	 * @param	string	$sortfield	Sort key, one of the keys of the whitelist below
+	 * @param	string	$sortorder	'ASC' or 'DESC', anything else falls back to 'ASC'
+	 * @return	array				One row per player
 	 */
-	public function getUnranked(string $mode, int $minGames): array
+	public function getPlayerList(string $sortfield = 'name', string $sortorder = 'ASC'): array
 	{
-		return $this->getRankingFromCache($mode, $minGames, true);
+		$rows = array();
+
+		// Never interpolate a posted sort value: only these keys reach the SQL
+		$sortMap = array(
+			'name' => 'u.lastname, u.firstname',
+			'elo' => 'r.elo',
+			'nb_games' => 'r.nb_games',
+			'ratio' => 'CASE WHEN r.nb_games > 0 THEN (r.nb_wins * 1.0 / r.nb_games) ELSE 0 END',
+			'date_last_game' => 'r.date_last_game',
+		);
+		if (!isset($sortMap[$sortfield])) {
+			$sortfield = 'name';
+		}
+		$direction = (strtoupper($sortorder) === 'DESC') ? 'DESC' : 'ASC';
+
+		$sql = "SELECT r.fk_user, r.elo, r.elo_peak, r.nb_games, r.nb_wins, r.nb_losses, r.nb_draws,";
+		$sql .= " r.current_streak, r.date_last_game,";
+		$sql .= " u.lastname, u.firstname, u.login, u.statut";
+		$sql .= " FROM ".$this->db->prefix()."babyfoot_rating as r";
+		$sql .= " LEFT JOIN ".$this->db->prefix()."user as u ON u.rowid = r.fk_user";
+		$sql .= " WHERE r.entity = ".((int) $this->entity);
+		// fk_user > 0 also excludes the sentinel lock row
+		$sql .= " AND r.fk_user > 0";
+		$sql .= " AND r.mode = '".$this->db->escape(BabyfootConfig::MODE_ALL)."'";
+		$sql .= " ORDER BY ";
+		if ($sortfield === 'name') {
+			// A player whose user was deleted has no label left: keep those rows at
+			// the end whatever the direction, rather than at the top as MySQL would
+			// order a NULL ascending
+			$sql .= "CASE WHEN COALESCE(u.lastname, '') = '' AND COALESCE(u.firstname, '') = '' THEN 1 ELSE 0 END ASC, ";
+		}
+		// The trailing key keeps the order stable between two calls
+		$sql .= $sortMap[$sortfield]." ".$direction.", r.fk_user ASC";
+
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			dol_syslog('RankingRepository::getPlayerList '.$this->db->lasterror(), LOG_ERR);
+			return $rows;
+		}
+		while ($obj = $this->db->fetch_object($resql)) {
+			$nbGames = (int) $obj->nb_games;
+			$rows[] = array(
+				'fk_user' => (int) $obj->fk_user,
+				'lastname' => (string) $obj->lastname,
+				'firstname' => (string) $obj->firstname,
+				'login' => (string) $obj->login,
+				'user_status' => (int) $obj->statut,
+				'elo' => (int) $obj->elo,
+				'elo_peak' => (int) $obj->elo_peak,
+				'nb_games' => $nbGames,
+				'nb_wins' => (int) $obj->nb_wins,
+				'nb_losses' => (int) $obj->nb_losses,
+				'nb_draws' => (int) $obj->nb_draws,
+				'ratio' => ($nbGames > 0) ? ((int) $obj->nb_wins / $nbGames) : 0.0,
+				'current_streak' => (int) $obj->current_streak,
+				'date_last_game' => $this->db->jdate($obj->date_last_game),
+			);
+		}
+		$this->db->free($resql);
+
+		return $rows;
 	}
 
 	/**
@@ -143,10 +209,9 @@ class RankingRepository
 	 *
 	 * @param	string	$mode			'1v1', '2v2' or 'all'
 	 * @param	int		$minGames		Games required to be ranked
-	 * @param	bool	$belowMinimum	true to get the unranked players instead
 	 * @return	array					Rows, best first
 	 */
-	private function getRankingFromCache(string $mode, int $minGames, bool $belowMinimum): array
+	private function getRankingFromCache(string $mode, int $minGames): array
 	{
 		$rows = array();
 
@@ -158,7 +223,7 @@ class RankingRepository
 		// fk_user > 0 also excludes the sentinel lock row
 		$sql .= " AND r.fk_user > 0";
 		$sql .= " AND r.mode = '".$this->db->escape($mode)."'";
-		$sql .= $belowMinimum ? " AND r.nb_games < ".((int) $minGames) : " AND r.nb_games >= ".((int) $minGames);
+		$sql .= " AND r.nb_games >= ".((int) $minGames);
 		// Section 9 tie break: win ratio, then goal difference, then games played.
 		// The final sort on fk_user keeps the order stable between two calls.
 		$sql .= " ORDER BY r.elo DESC,";

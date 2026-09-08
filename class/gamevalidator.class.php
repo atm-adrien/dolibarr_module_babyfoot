@@ -44,21 +44,16 @@ class GameValidator
 	/** @var int Entity to filter on */
 	private $entity;
 
-	/** @var array Resolved settings, see BabyfootConfig::resolve() */
-	private $config;
-
 	/**
 	 * Constructor
 	 *
 	 * @param	DoliDB	$db			Database handler
 	 * @param	int		$entity		Entity to filter on
-	 * @param	array	$config		Resolved settings (BabyfootConfig::resolve())
 	 */
-	public function __construct(DoliDB $db, int $entity, array $config)
+	public function __construct(DoliDB $db, int $entity)
 	{
 		$this->db = $db;
 		$this->entity = $entity;
-		$this->config = $config;
 	}
 
 	/**
@@ -119,17 +114,17 @@ class GameValidator
 			}
 		}
 
-		// RG-03: scores are integers within [0, BABYFOOT_SCORE_MAX]
-		$max = (int) $this->config['score_max'];
+		// RG-03: scores are integers within [0, SCORE_MAX]
+		$max = BabyfootConfig::SCORE_MAX;
 		if ($scoreTeam1 < 0 || $scoreTeam2 < 0 || $scoreTeam1 > $max || $scoreTeam2 > $max) {
 			$errors[] = 'BabyfootErrScoreRange';
-		} elseif (!empty($this->config['score_exact']) && max($scoreTeam1, $scoreTeam2) !== $max) {
-			// RG-04: the winning team must reach exactly the maximum score
+		} elseif (max($scoreTeam1, $scoreTeam2) !== $max) {
+			// RG-04: the winning team always has to reach the maximum score
 			$errors[] = 'BabyfootErrScoreExact';
 		}
 
-		// RG-05: draws are refused unless explicitly allowed
-		if ($scoreTeam1 === $scoreTeam2 && empty($this->config['allow_draw'])) {
+		// RG-05: a draw is never a valid babyfoot result
+		if ($scoreTeam1 === $scoreTeam2) {
 			$errors[] = 'BabyfootErrDrawNotAllowed';
 		}
 

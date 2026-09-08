@@ -28,21 +28,22 @@ utilisent la bibliothèque fournie par Dolibarr.
    externes.
 3. Attribuer les droits aux utilisateurs concernés.
 
-L'activation crée trois tables, les cinq droits, le menu, le widget de tableau de bord
-et les douze paramètres par défaut. **La désactivation ne supprime aucune donnée et ne
+L'activation crée trois tables, les quatre droits, le menu, le widget de tableau de bord
+et les trois paramètres par défaut. **La désactivation ne supprime aucune donnée et ne
 réinitialise aucun paramétrage** : la réactivation retrouve l'existant intact.
 
 ## Fonctionnalités
 
 | Écran | Rôle |
 |---|---|
-| Nouvelle partie | Saisie rapide, 1v1 ou 2v2, score final uniquement |
-| Parties | Liste filtrable, fiche, modification, annulation, suppression |
-| Classement | Elo par mode, avec filtre de période et section des non classés |
+| Créer une partie | Saisie rapide, 1v1 ou 2v2, score final uniquement |
+| Liste des parties | Liste filtrable, fiche, modification, annulation, suppression |
+| Liste des joueurs | Annuaire trié par nom, colonnes triables, lien vers la fiche |
+| Classement | Elo par mode, avec filtre de période |
 | Fiche joueur | Compteurs, courbe d'Elo, confrontations, dernières parties |
 | Statistiques | Totaux, duos, fannys, répartition horaire et hebdomadaire |
 | Widget | Top 5, rang personnel, trois dernières parties |
-| Configuration | Les douze paramètres, recalcul et vérification de cohérence |
+| Configuration | Les trois paramètres, recalcul et vérification de cohérence |
 
 ## Droits
 
@@ -50,7 +51,6 @@ réinitialise aucun paramétrage** : la réactivation retrouve l'existant intact
 |---|---|
 | `read` | Consulter les parties, le classement et les statistiques |
 | `create` | Saisir une partie |
-| `modify_own` | Modifier ou annuler une partie que l'on a saisie, dans le délai imparti |
 | `modify_all` | Modifier, annuler ou supprimer toute partie |
 | `admin` | Configurer le module et lancer un recalcul |
 
@@ -59,12 +59,13 @@ axes distincts, le paramétrage d'une part, les données de l'autre.
 
 ## Paramétrage
 
-Douze paramètres, réglables depuis l'onglet Configuration du module : score maximum,
-score exact exigé du vainqueur, autorisation des matchs nuls, Elo de départ,
-coefficients K des confirmés et des débutants, seuil de sortie du statut débutant,
-pondération par l'écart de buts, parties minimum pour être classé, délai de
-modification par l'auteur, pré-remplissage de l'utilisateur connecté et mode par
-défaut.
+Les règles du jeu ne se règlent pas : une partie se joue en 10 buts que le vainqueur
+doit atteindre, un match nul est refusé, le coefficient K vaut 40 pour tout le monde
+sans pondération par l'écart de buts, et on figure au classement dès la première
+partie. Ces valeurs sont des constantes de `BabyfootConfig`.
+
+Trois paramètres seulement, réglables depuis l'onglet Configuration du module : Elo de
+départ, pré-remplissage de l'utilisateur connecté et mode de jeu par défaut.
 
 La documentation complète de chaque paramètre est accessible en ligne depuis l'onglet
 Documentation du module.

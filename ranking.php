@@ -41,7 +41,6 @@ if (!$user->hasRight('babyfoot', 'read')) {
 	accessforbidden();
 }
 
-$config = BabyfootConfig::resolve();
 
 $mode = GETPOST('mode', 'aZ09');
 if (!in_array($mode, BabyfootConfig::ratingModes(), true)) {
@@ -58,8 +57,8 @@ if (!in_array($period, $allowedPeriods, true)) {
 $dateFrom = ($period === 'all') ? 0 : (dol_now() - ((int) $period * 24 * 3600));
 
 $repository = new RankingRepository($db, (int) $conf->entity);
-$ranking = $repository->getRanking($mode, (int) $config['min_games_ranked'], $dateFrom, 0);
-$unranked = $repository->getUnranked($mode, (int) $config['min_games_ranked']);
+// RG-19 dropped: a single game is enough to be ranked
+$ranking = $repository->getRanking($mode, 0, $dateFrom, 0);
 $variations = $repository->getRankVariationSinceLastGame($mode, $ranking);
 
 // Decision D11: the streak shown is always the overall one, whatever the tab
@@ -111,30 +110,24 @@ function babyfootRankingPlayerNames($db, $langs, array $rowsets)
  * @param	int			$position		Zero based position in the ranking
  * @param	int			$variation		Rank variation since the last game
  * @param	int|null	$streak			Streak to display, null to use the row one
- * @param	bool		$isUnranked		Render as an unranked player
  * @param	array		$names			Player names indexed by user id
  * @return	void
  */
-function babyfootRankingRow($row, $position, $variation, $streak, $isUnranked, array $names)
+function babyfootRankingRow($row, $position, $variation, $streak, array $names)
 {
-	$cssRank = '';
-	if (!$isUnranked && $position < 3) {
-		$cssRank = ' babyfoot-rank-'.($position + 1);
-	}
+	$cssRank = ($position < 3) ? ' babyfoot-rank-'.($position + 1) : '';
 
-	print '<tr class="oddeven'.($isUnranked ? ' babyfoot-unranked' : '').$cssRank.'">';
+	print '<tr class="oddeven'.$cssRank.'">';
 
-	print '<td class="center">'.($isUnranked ? '-' : ($position + 1)).'</td>';
+	print '<td class="center">'.($position + 1).'</td>';
 
 	print '<td class="center">';
-	if (!$isUnranked) {
-		if ($variation > 0) {
-			print '<span class="babyfoot-up">&uarr; '.((int) $variation).'</span>';
-		} elseif ($variation < 0) {
-			print '<span class="babyfoot-down">&darr; '.abs((int) $variation).'</span>';
-		} else {
-			print '<span class="babyfoot-flat">=</span>';
-		}
+	if ($variation > 0) {
+		print '<span class="babyfoot-up">&uarr; '.((int) $variation).'</span>';
+	} elseif ($variation < 0) {
+		print '<span class="babyfoot-down">&darr; '.abs((int) $variation).'</span>';
+	} else {
+		print '<span class="babyfoot-flat">=</span>';
 	}
 	print '</td>';
 
@@ -172,11 +165,11 @@ function babyfootRankingRow($row, $position, $variation, $streak, $isUnranked, a
 
 // Resolve every player name once, before rendering anything: doing it inside the
 // display loop would mean one query per row, which section 9 forbids
-$playerNames = babyfootRankingPlayerNames($db, $langs, array($ranking, $unranked));
+$playerNames = babyfootRankingPlayerNames($db, $langs, array($ranking));
 
 llxHeader('', $langs->trans('BabyfootMenuRanking'), '', '', 0, 0, array(), array());
 
-print load_fiche_titre($langs->trans('BabyfootMenuRanking'), '', 'babyfoot@babyfoot');
+print load_fiche_titre($langs->trans('BabyfootMenuRanking'), '', 'fa-futbol');
 
 $head = babyfootRankingPrepareHead($mode);
 print dol_get_fiche_head($head, $mode, '', -1, '');
@@ -198,7 +191,7 @@ foreach ($periodLabels as $value => $label) {
 print '</div>';
 
 // Empty state (section 9)
-if (empty($ranking) && empty($unranked)) {
+if (empty($ranking)) {
 	print '<div class="babyfoot-empty opacitymedium">';
 	print dol_escape_htmltag($langs->trans('BabyfootNoRankingYet')).'<br><br>';
 	print '<a class="button" href="'.dol_buildpath('/babyfoot/game_quickadd.php', 1).'">';
@@ -229,7 +222,7 @@ print '</tr>';
 
 if (empty($ranking)) {
 	print '<tr class="oddeven"><td colspan="10" class="opacitymedium center">';
-	print dol_escape_htmltag($langs->trans('BabyfootNobodyRankedYet', (int) $config['min_games_ranked']));
+	print dol_escape_htmltag($langs->trans('BabyfootNobodyRankedYet'));
 	print '</td></tr>';
 }
 
@@ -237,44 +230,11 @@ foreach ($ranking as $position => $row) {
 	$userId = (int) $row['fk_user'];
 	$variation = isset($variations[$userId]) ? (int) $variations[$userId] : 0;
 	$streak = ($mode === BabyfootConfig::MODE_ALL) ? null : (isset($overallStreaks[$userId]) ? (int) $overallStreaks[$userId] : 0);
-	babyfootRankingRow($row, $position, $variation, $streak, false, $playerNames);
+	babyfootRankingRow($row, $position, $variation, $streak, $playerNames);
 }
 
 print '</table>';
 print '</div>';
-
-// Unranked players (RG-19), in a collapsed section
-if (!empty($unranked)) {
-	print '<br>';
-	print '<div class="div-table-responsive">';
-	print '<a href="#" onclick="babyfootToggleDateBox(\'babyfoot-unranked-table\'); return false;">';
-	print dol_escape_htmltag($langs->trans('BabyfootUnrankedPlayers', count($unranked)));
-	print '</a>';
-	print '<div id="babyfoot-unranked-table" class="hideobject">';
-	print '<table class="tagtable liste">';
-	print '<tr class="liste_titre">';
-	print '<th class="center">'.$langs->trans('BabyfootRank').'</th>';
-	print '<th class="center"></th>';
-	print '<th>'.$langs->trans('BabyfootPlayer').'</th>';
-	print '<th class="center">'.$langs->trans('BabyfootElo').'</th>';
-	print '<th class="center">'.$langs->trans('BabyfootNbGames').'</th>';
-	print '<th class="center">'.$langs->trans('BabyfootWinsLosses').'</th>';
-	print '<th class="center">'.$langs->trans('BabyfootRatio').'</th>';
-	print '<th class="center">'.$langs->trans('BabyfootGoalDiff').'</th>';
-	print '<th class="center">'.$langs->trans('BabyfootCurrentStreak').'</th>';
-	print '<th class="center">'.$langs->trans('BabyfootDateLastGame').'</th>';
-	print '</tr>';
-
-	foreach ($unranked as $position => $row) {
-		$userId = (int) $row['fk_user'];
-		$streak = ($mode === BabyfootConfig::MODE_ALL) ? null : (isset($overallStreaks[$userId]) ? (int) $overallStreaks[$userId] : 0);
-		babyfootRankingRow($row, $position, 0, $streak, true, $playerNames);
-	}
-
-	print '</table>';
-	print '</div>';
-	print '</div>';
-}
 
 print dol_get_fiche_end();
 

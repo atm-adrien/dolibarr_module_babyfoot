@@ -52,7 +52,7 @@ class modBabyfoot extends DolibarrModules
 		$this->editor_url = 'https://www.atm-consulting.fr';
 		$this->version = '1.0.0';
 		$this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
-		$this->picto = 'babyfoot@babyfoot';
+		$this->picto = '^fa-futbol';
 
 		// Url to the file with your last numberversion of this module
 		require_once __DIR__.'/../../class/techatm.class.php';
@@ -62,6 +62,10 @@ class modBabyfoot extends DolibarrModules
 		$this->dirs = array();
 
 		$this->module_parts = array(
+			// Feeds MAIN_MODULE_BABYFOOT_ICON, read by the theme to build the top menu
+			// icon. Declared explicitly because the auto detection of DolibarrModules
+			// tests /^fa-/ against $this->picto, which the leading '^' defeats.
+			'icon' => 'fa-futbol',
 			'css' => array('/babyfoot/css/babyfoot.css.php'),
 			'js' => array('/babyfoot/js/babyfoot.js.php'),
 			'models' => 1,
@@ -78,18 +82,10 @@ class modBabyfoot extends DolibarrModules
 		$this->phpmin = array(7, 4);
 		$this->need_dolibarr_version = array(22, 0);
 
-		// Settings created on activation, never removed on deactivation (spec section 7)
+		// Settings created on activation, never removed on deactivation (spec section 7).
+		// The scoring rules and the K factor are NOT settings: see BabyfootConfig.
 		$this->const = array(
-			array('BABYFOOT_SCORE_MAX', 'chaine', '10', 'Max score of a game', 0, 'current', 0),
-			array('BABYFOOT_SCORE_EXACT', 'chaine', '1', 'Winner must reach exactly the max score', 0, 'current', 0),
-			array('BABYFOOT_ALLOW_DRAW', 'chaine', '0', 'Allow draws', 0, 'current', 0),
 			array('BABYFOOT_ELO_INITIAL', 'chaine', '1000', 'Initial Elo rating', 0, 'current', 0),
-			array('BABYFOOT_ELO_K', 'chaine', '24', 'K factor of confirmed players', 0, 'current', 0),
-			array('BABYFOOT_ELO_K_NOVICE', 'chaine', '40', 'K factor of novice players', 0, 'current', 0),
-			array('BABYFOOT_ELO_NOVICE_GAMES', 'chaine', '15', 'Games before leaving novice status', 0, 'current', 0),
-			array('BABYFOOT_ELO_MARGIN', 'chaine', '0', 'Weight K by goal difference', 0, 'current', 0),
-			array('BABYFOOT_MIN_GAMES_RANKED', 'chaine', '5', 'Min games to appear in ranking', 0, 'current', 0),
-			array('BABYFOOT_EDIT_DELAY', 'chaine', '24', 'Author edit delay in hours', 0, 'current', 0),
 			array('BABYFOOT_PREFILL_CURRENT_USER', 'chaine', '1', 'Prefill current user as first player', 0, 'current', 0),
 			array('BABYFOOT_DEFAULT_MODE', 'chaine', '2v2', 'Default game mode', 0, 'current', 0),
 		);
@@ -140,13 +136,6 @@ class modBabyfoot extends DolibarrModules
 		$this->rights[$r][5] = '';
 		$r++;
 
-		$this->rights[$r][0] = $this->numero.'03';
-		$this->rights[$r][1] = 'BabyfootRightModifyOwn';
-		$this->rights[$r][3] = 1;
-		$this->rights[$r][4] = 'modify_own';
-		$this->rights[$r][5] = '';
-		$r++;
-
 		$this->rights[$r][0] = $this->numero.'04';
 		$this->rights[$r][1] = 'BabyfootRightModifyAll';
 		$this->rights[$r][3] = 0;
@@ -162,7 +151,9 @@ class modBabyfoot extends DolibarrModules
 	}
 
 	/**
-	 * Declare the module menus: one top entry and four left entries.
+	 * Declare the module menus: one top entry and three first level left entries,
+	 * Games and Players carrying two children each, Statistics standing alone
+	 * since collective statistics describe no single player.
 	 *
 	 * The top entry points to the quick entry screen and not to a dashboard:
 	 * recording a game is the purpose of the module (spec section 1).
@@ -177,7 +168,7 @@ class modBabyfoot extends DolibarrModules
 			'fk_menu' => '',
 			'type' => 'top',
 			'titre' => 'BabyfootMenuTop',
-			'prefix' => img_picto('', 'babyfoot@babyfoot', 'class="pictofixedwidth valignmiddle"'),
+			'prefix' => img_picto('', 'fa-futbol', 'class="pictofixedwidth valignmiddle"'),
 			'mainmenu' => 'babyfoot',
 			'leftmenu' => '',
 			'url' => '/babyfoot/game_quickadd.php',
@@ -189,25 +180,31 @@ class modBabyfoot extends DolibarrModules
 			'user' => 0,
 		);
 
+		// A non empty 'parent' nests the entry under that leftmenu code. Menubase only
+		// inserts a child once its parent is already in the list, so a parent must be
+		// declared before its children and therefore keep a lower position.
 		$leftEntries = array(
-			array('BabyfootMenuNewGame', 'babyfoot_new', '/babyfoot/game_quickadd.php', 'create'),
-			array('BabyfootMenuGames', 'babyfoot_games', '/babyfoot/game_list.php', 'read'),
-			array('BabyfootMenuRanking', 'babyfoot_ranking', '/babyfoot/ranking.php', 'read'),
-			array('BabyfootMenuStats', 'babyfoot_stats', '/babyfoot/stats.php', 'read'),
+			array('titre' => 'BabyfootMenuGames', 'leftmenu' => 'babyfoot_games', 'parent' => '', 'url' => '/babyfoot/game_list.php', 'perm' => 'read'),
+			array('titre' => 'BabyfootMenuNewGame', 'leftmenu' => 'babyfoot_new', 'parent' => 'babyfoot_games', 'url' => '/babyfoot/game_quickadd.php', 'perm' => 'create'),
+			array('titre' => 'BabyfootMenuGameList', 'leftmenu' => 'babyfoot_gamelist', 'parent' => 'babyfoot_games', 'url' => '/babyfoot/game_list.php', 'perm' => 'read'),
+			array('titre' => 'BabyfootMenuPlayers', 'leftmenu' => 'babyfoot_players', 'parent' => '', 'url' => '/babyfoot/player_list.php', 'perm' => 'read'),
+			array('titre' => 'BabyfootMenuPlayerList', 'leftmenu' => 'babyfoot_playerlist', 'parent' => 'babyfoot_players', 'url' => '/babyfoot/player_list.php', 'perm' => 'read'),
+			array('titre' => 'BabyfootMenuRanking', 'leftmenu' => 'babyfoot_ranking', 'parent' => 'babyfoot_players', 'url' => '/babyfoot/ranking.php', 'perm' => 'read'),
+			array('titre' => 'BabyfootMenuStats', 'leftmenu' => 'babyfoot_stats', 'parent' => '', 'url' => '/babyfoot/stats.php', 'perm' => 'read'),
 		);
 
 		foreach ($leftEntries as $entry) {
 			$this->menu[$r++] = array(
-				'fk_menu' => 'fk_mainmenu=babyfoot',
+				'fk_menu' => 'fk_mainmenu=babyfoot'.($entry['parent'] !== '' ? ',fk_leftmenu='.$entry['parent'] : ''),
 				'type' => 'left',
-				'titre' => $entry[0],
+				'titre' => $entry['titre'],
 				'mainmenu' => 'babyfoot',
-				'leftmenu' => $entry[1],
-				'url' => $entry[2],
+				'leftmenu' => $entry['leftmenu'],
+				'url' => $entry['url'],
 				'langs' => 'babyfoot@babyfoot',
 				'position' => 1000 + $r,
 				'enabled' => 'isModEnabled("babyfoot")',
-				'perms' => '$user->hasRight("babyfoot", "'.$entry[3].'")',
+				'perms' => '$user->hasRight("babyfoot", "'.$entry['perm'].'")',
 				'target' => '',
 				'user' => 0,
 			);

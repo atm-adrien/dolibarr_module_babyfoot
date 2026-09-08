@@ -29,68 +29,60 @@ Une partie 1v1 fait évoluer le classement 1v1 et le classement général ; une 
 
 Un joueur n'ayant jamais joué dans un mode n'apparaît pas du tout au classement de ce mode.
 
+## Règles fixes
+
+Les règles suivantes ne se règlent pas : elles sont inscrites dans le code, comme constantes de
+`BabyfootConfig`.
+
+- Une partie se joue **en 10 buts**, et le camp vainqueur doit atteindre ce total. Une partie
+  écourtée est refusée.
+- Il n'y a **jamais de match nul** : deux scores égaux sont refusés.
+- Le **coefficient K vaut 40** pour tout le monde, sans distinction de débutant ou de confirmé et
+  sans pondération par l'écart de buts. Deux joueurs à 1000 qui s'affrontent échangent donc
+  exactement 20 points, et les deux joueurs d'un même camp reçoivent toujours la même variation.
+- On **figure au classement dès la première partie**, sans seuil minimum.
+
 ## Configuration
 
-Les paramètres ci-dessous sont créés à l'activation du module et se règlent depuis
-l'onglet **Configuration**.
-
-> Note : modifier un paramètre de calcul Elo ne recalcule pas le classement existant.
-> Après un changement de coefficient, lancer un recalcul complet depuis l'onglet Configuration
-> pour que l'historique soit rejoué avec les nouvelles valeurs.
-
-### Règles de partie
-
-- **Score maximum d'une partie** (`BABYFOOT_SCORE_MAX`, défaut 10) — borne haute des deux scores.
-- **Le camp gagnant doit atteindre exactement le score maximum** (`BABYFOOT_SCORE_EXACT`, défaut oui) —
-  désactiver ce paramètre pour accepter les parties écourtées.
-- **Autoriser les matchs nuls** (`BABYFOOT_ALLOW_DRAW`, défaut non).
-
-### Calcul du classement
+Trois paramètres seulement, créés à l'activation du module et réglables depuis l'onglet
+**Configuration**.
 
 - **Elo de départ** (`BABYFOOT_ELO_INITIAL`, défaut 1000) — note attribuée à la première partie
   d'un joueur.
-- **Coefficient K des joueurs confirmés** (`BABYFOOT_ELO_K`, défaut 24) — amplitude des variations
-  d'Elo. Plus il est élevé, plus le classement réagit vite.
-- **Coefficient K des débutants** (`BABYFOOT_ELO_K_NOVICE`, défaut 40) — appliqué tant que le joueur
-  n'a pas atteint le seuil ci-dessous, pour que son niveau réel soit trouvé rapidement.
-- **Nombre de parties avant de quitter le statut de débutant** (`BABYFOOT_ELO_NOVICE_GAMES`, défaut 15).
-  Ce compteur est propre à chaque classement : un joueur peut être débutant en 1v1 et confirmé au
-  classement général.
-- **Pondérer le coefficient K par l'écart de buts** (`BABYFOOT_ELO_MARGIN`, défaut non) — une victoire
-  large rapporte alors davantage qu'une victoire serrée.
-- **Nombre de parties minimum pour figurer au classement** (`BABYFOOT_MIN_GAMES_RANKED`, défaut 5) —
-  en dessous, le joueur est listé à part, dans la section « non classés ».
-
-> Attention : en 2 contre 2, les deux joueurs d'un même camp partagent la même espérance de gain
-> mais conservent leur propre coefficient K. Un débutant et un joueur confirmé du même camp
-> reçoivent donc des variations d'Elo différentes, toujours de même sens.
-
-### Saisie et modification
-
-- **Délai de modification par l'auteur, en heures** (`BABYFOOT_EDIT_DELAY`, défaut 24) — au-delà,
-  seul un utilisateur disposant du droit « Modifier toute partie » peut intervenir.
 - **Pré-positionner l'utilisateur connecté comme premier joueur** (`BABYFOOT_PREFILL_CURRENT_USER`,
   défaut oui).
 - **Mode de jeu proposé par défaut** (`BABYFOOT_DEFAULT_MODE`, défaut 2v2). Le dernier mode utilisé
   est ensuite mémorisé par utilisateur.
 
+> Note : modifier l'Elo de départ ne recalcule pas le classement existant. Lancer ensuite un
+> recalcul complet depuis l'onglet Configuration pour que l'historique soit rejoué avec la
+> nouvelle valeur.
+
 ## Utilisation
 
 ### Saisir une partie
 
-1. Ouvrir **Babyfoot > Nouvelle partie**.
+1. Ouvrir **Babyfoot > Parties > Créer une partie**.
 2. Choisir le mode : 1 contre 1 ou 2 contre 2.
 3. Sélectionner les joueurs de chaque camp. Les derniers coéquipiers et adversaires sont proposés
    en tête de liste.
-4. Saisir les deux scores, au clavier ou avec les boutons + et −.
+4. Saisir les deux scores au clavier.
 5. Valider. Le camp vainqueur est déduit du score, il n'est jamais saisi.
 
-La date et l'heure sont pré-remplies à maintenant. Le bloc de date se déplie pour saisir une
-partie oubliée. Après enregistrement, la variation d'Elo de chaque joueur s'affiche et le
-formulaire se réinitialise, prêt pour la partie suivante.
+La partie est enregistrée à l'instant de la saisie : l'écran ne propose pas de choisir la date.
+Une partie oubliée se corrige depuis sa fiche, où la date reste modifiable. Après enregistrement,
+la variation d'Elo de chaque joueur s'affiche et le formulaire se réinitialise, prêt pour la
+partie suivante.
 
 > Note : le créateur d'une partie n'est pas obligé d'y avoir participé. Une personne peut saisir
 > pour tout le monde.
+
+### Retrouver un joueur
+
+**Babyfoot > Joueurs > Liste des joueurs** est l'annuaire : un joueur y apparaît dès sa première
+partie. Le tri par défaut est alphabétique, chaque colonne est triable, et le nom mène à la fiche
+du joueur. Un joueur dont le compte Dolibarr a été supprimé reste listé, sous la forme `#identifiant` :
+son historique compte toujours dans le classement.
 
 ### Consulter le classement
 
@@ -102,6 +94,9 @@ En cas d'égalité stricte d'Elo, les joueurs sont départagés par ratio de vic
 différence de buts, puis par nombre de parties.
 
 ### Corriger une partie
+
+Modifier, annuler ou supprimer une partie exige le droit **Modifier toute partie**. Ni le fait
+d'avoir saisi la partie, ni son ancienneté ne donnent de privilège particulier.
 
 Depuis la fiche d'une partie, l'annulation est à privilégier sur la suppression : une partie
 annulée est conservée dans l'historique tout en devenant neutre pour tous les calculs.
@@ -135,16 +130,17 @@ Elles sont conservées. Le joueur disparaît du classement actif et des sélecte
 reste visible dans les fiches de parties passées et dans les statistiques historiques. Aucune
 suppression en cascade n'est effectuée sur les utilisateurs Dolibarr.
 
-### Pourquoi mon Elo bouge-t-il autant au début ?
+### Pourquoi mon Elo bouge-t-il autant ?
 
-Le coefficient K des débutants vaut 40 par défaut, contre 24 ensuite. Les quinze premières parties
-servent à situer rapidement le niveau réel du joueur : les variations y sont volontairement plus
-amples. Le classement ne devient significatif qu'après quelques dizaines de parties.
+Le coefficient K vaut 40 pour tout le monde, ce qui est volontairement nerveux : deux joueurs de
+même niveau échangent 20 points par partie, et battre un joueur bien mieux classé peut en rapporter
+30. Le classement réagit donc vite, au prix d'une stabilité moindre. Comptez une quinzaine de
+parties pour qu'il reflète un niveau réel.
 
-### Pourquoi ne suis-je pas dans le classement ?
+### Pourquoi les deux joueurs de mon camp gagnent-ils autant l'un que l'autre ?
 
-Il faut avoir joué au moins cinq parties par défaut. En dessous, le joueur figure dans la section
-repliée « joueurs non classés », avec son Elo grisé.
+Parce que le coefficient K est le même pour tous et que l'espérance de gain est celle du camp, pas
+celle du joueur. En 2 contre 2, les deux coéquipiers reçoivent exactement la même variation.
 
 ### Le classement est-il cloisonné entre entités ?
 

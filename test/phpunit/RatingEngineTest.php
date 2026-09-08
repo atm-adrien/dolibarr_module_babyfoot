@@ -57,9 +57,10 @@ class RatingEngineTest extends CommonClassTest
 	{
 		global $db, $conf;
 
-		$db->query("DELETE gp FROM ".$db->prefix()."babyfoot_game_player as gp"
-			." INNER JOIN ".$db->prefix()."babyfoot_game as g ON g.rowid = gp.fk_game"
-			." WHERE g.entity = ".((int) $conf->entity));
+		$sql = "DELETE gp FROM ".$db->prefix()."babyfoot_game_player as gp";
+		$sql .= " INNER JOIN ".$db->prefix()."babyfoot_game as g ON g.rowid = gp.fk_game";
+		$sql .= " WHERE g.entity = ".((int) $conf->entity);
+		$db->query($sql);
 		$db->query("DELETE FROM ".$db->prefix()."babyfoot_game WHERE entity = ".((int) $conf->entity));
 		$db->query("DELETE FROM ".$db->prefix()."babyfoot_rating WHERE entity = ".((int) $conf->entity));
 	}
@@ -317,18 +318,19 @@ class RatingEngineTest extends CommonClassTest
 	}
 
 	/**
-	 * Decision D10: in 2v2, a novice and a confirmed teammate get different
-	 * deltas, of the same sign.
+	 * With one K for everybody, two teammates always move by the same amount,
+	 * however many games each of them already played. This is what replaced
+	 * decision D10.
 	 *
 	 * @return void
 	 */
-	public function testTeammatesWithDifferentKGetDifferentDeltas()
+	public function testTeammatesGetTheSameDelta()
 	{
 		global $db, $user, $conf;
 
 		$this->wipeHistory();
 
-		// User 3 already played 20 games in 2v2, so they left the novice status
+		// User 3 already played 20 games in 2v2, which used to change their K
 		$sql = "INSERT INTO ".$db->prefix()."babyfoot_rating (entity, fk_user, mode, elo, nb_games, elo_peak)";
 		$sql .= " VALUES (".((int) $conf->entity).", 3, '2v2', 1000, 20, 1000)";
 		$this->assertNotFalse($db->query($sql));
@@ -352,9 +354,10 @@ class RatingEngineTest extends CommonClassTest
 			$deltas[(int) $line->fk_user] = (int) $line->elo_delta;
 		}
 
-		$this->assertSame(20, $deltas[1], 'novice should move by round(40 * 0.5)');
-		$this->assertSame(12, $deltas[3], 'confirmed should move by round(24 * 0.5)');
-		$this->assertGreaterThan($deltas[3], $deltas[1]);
+		$this->assertSame(20, $deltas[1], 'round(40 * 0.5)');
+		$this->assertSame(20, $deltas[3], 'the same, whatever the games already played');
+		$this->assertSame(-20, $deltas[2]);
+		$this->assertSame(-20, $deltas[4]);
 	}
 
 	/**

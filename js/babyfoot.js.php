@@ -39,6 +39,10 @@ if (!defined('NOLOGIN')) {
 	define('NOLOGIN', '1');
 }
 
+// Must be called BEFORE main.inc.php starts the session, otherwise PHP raises a
+// warning that is printed into the file and swallows its first rule
+session_cache_limiter('public');
+
 $res = @include '../../main.inc.php';
 if (!$res) {
 	$res = @include '../../../main.inc.php';
@@ -47,46 +51,9 @@ if (!$res) {
 	die('Include of main fails');
 }
 
-session_cache_limiter('public');
-
 header('Content-type: application/javascript');
 header('Cache-Control: max-age=86400, public, must-revalidate');
 ?>
-
-/**
- * Bind the plus and minus score buttons.
- *
- * @param {number} maxScore Highest score allowed, only a client side comfort
- * @return {void}
- */
-function babyfootBindScoreButtons(maxScore) {
-	jQuery('.babyfoot-score-btn').off('click.babyfoot').on('click.babyfoot', function (e) {
-		e.preventDefault();
-
-		var target = jQuery('#' + jQuery(this).data('target'));
-		if (target.length === 0) {
-			return;
-		}
-
-		var step = parseInt(jQuery(this).data('step'), 10);
-		var value = parseInt(target.val(), 10);
-		if (isNaN(value)) {
-			value = 0;
-		}
-		if (isNaN(step)) {
-			step = 0;
-		}
-
-		value = value + step;
-		if (value < 0) {
-			value = 0;
-		}
-		if (maxScore > 0 && value > maxScore) {
-			value = maxScore;
-		}
-		target.val(value);
-	});
-}
 
 /**
  * Move the suggested players to the top of a player selector.
@@ -115,11 +82,11 @@ function babyfootPromoteSuggestions(selectId, ids) {
 }
 
 /**
- * Toggle the collapsed date block of the entry screen.
+ * Toggle a collapsed block.
  *
  * @param {string} boxId Id of the block to toggle
  * @return {void}
  */
-function babyfootToggleDateBox(boxId) {
+function babyfootToggleBox(boxId) {
 	jQuery('#' + boxId).slideToggle(120);
 }

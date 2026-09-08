@@ -15,14 +15,16 @@ babyfootDocumentationFileNotFound = Documentation file docs/configuration.md not
 # Rights
 BabyfootRightRead = Read games, ranking and statistics
 BabyfootRightCreate = Record a game
-BabyfootRightModifyOwn = Modify or cancel a game you recorded, within the allowed delay
 BabyfootRightModifyAll = Modify, cancel or delete any game
 BabyfootRightAdmin = Configure the module and run a ranking recompute
 
 # Menus
 BabyfootMenuTop = Table football
-BabyfootMenuNewGame = New game
+BabyfootMenuNewGame = Create a game
 BabyfootMenuGames = Games
+BabyfootMenuGameList = Game list
+BabyfootMenuPlayers = Players
+BabyfootMenuPlayerList = Player list
 BabyfootMenuRanking = Ranking
 BabyfootMenuStats = Statistics
 
@@ -30,6 +32,7 @@ BabyfootMenuStats = Statistics
 BabyfootGame = Game
 BabyfootGames = Games
 BabyfootPlayer = Player
+BabyfootPlayers = Players
 BabyfootTeam = Team
 BabyfootTeam1 = Blue team
 BabyfootTeam2 = Red team
@@ -38,6 +41,7 @@ BabyfootDateGame = Game date
 BabyfootMode = Mode
 Babyfoot1v1 = 1v1
 Babyfoot2v2 = 2v2
+BabyfootVersus = VS
 BabyfootRankingOverall = Overall
 BabyfootScoreTeam1 = Blue team score
 BabyfootScoreTeam2 = Red team score
@@ -56,16 +60,7 @@ BabyfootNumRefStandardDesc = Returns a reference using the %s mask, reset every 
 
 # Settings
 BabyfootSetup = Table football module setup
-BABYFOOT_SCORE_MAX = Maximum score of a game
-BABYFOOT_SCORE_EXACT = The winning team must reach exactly the maximum score
-BABYFOOT_ALLOW_DRAW = Allow draws
 BABYFOOT_ELO_INITIAL = Initial Elo rating
-BABYFOOT_ELO_K = K factor of confirmed players
-BABYFOOT_ELO_K_NOVICE = K factor of novice players
-BABYFOOT_ELO_NOVICE_GAMES = Number of games before leaving novice status
-BABYFOOT_ELO_MARGIN = Weight the K factor by the goal difference
-BABYFOOT_MIN_GAMES_RANKED = Minimum games to appear in the ranking
-BABYFOOT_EDIT_DELAY = Author edit delay, in hours
 BABYFOOT_PREFILL_CURRENT_USER = Prefill the logged-in user as first player
 BABYFOOT_DEFAULT_MODE = Default game mode
 
@@ -93,6 +88,7 @@ BabyfootFannyTaken = Fannies suffered
 BabyfootCurrentStreak = Current streak
 BabyfootBestStreak = Best streak
 BabyfootEloPeak = Highest Elo reached
+BabyfootEloOverall = Overall Elo
 BabyfootDateLastGame = Last game
 BabyfootErrNoPlayer = The game holds no player
 BabyfootErrLockFailed = Could not acquire the ranking computation lock
@@ -108,7 +104,6 @@ BabyfootGameCancelled = Game %s cancelled
 BabyfootGameReopened = Game %s reopened
 BabyfootGameDeleted = Game deleted
 BabyfootGameNotFound = This game does not exist or has been deleted
-BabyfootChangeDate = Change the date and time
 BabyfootScore = Score
 BabyfootDraw = Draw
 BabyfootMyGames = My games
@@ -130,8 +125,8 @@ BabyfootPeriod90 = 90 days
 BabyfootPeriodYear = 1 year
 BabyfootPeriodAll = All
 BabyfootNoRankingYet = No ranking yet, no game has been recorded so far
-BabyfootNobodyRankedYet = Nobody reached the %s games required to be ranked yet
-BabyfootUnrankedPlayers = Unranked players (%s)
+BabyfootNoPlayerYet = No player yet, no game has been recorded so far
+BabyfootNobodyRankedYet = No player ranked over this period
 
 # Player card
 BabyfootPlayerNotFound = This player cannot be found and has no recorded game

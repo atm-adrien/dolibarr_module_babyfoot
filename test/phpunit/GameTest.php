@@ -320,47 +320,44 @@ class GameTest extends CommonClassTest
 	}
 
 	/**
-	 * RG-32: the author may edit within the delay, a stranger never may.
+	 * RG-32: correcting a game rests on the sole modify_all permission. Neither
+	 * being the author nor the age of the record grants anything.
 	 *
 	 * @return void
 	 */
-	public function testCanBeEditedByAuthorWithinDelay()
+	public function testCanBeEditedOnlyWithModifyAll()
 	{
-		global $user, $db;
+		global $user, $db, $conf;
 
-		$game = $this->makeGame();
-		$this->assertGreaterThan(0, $game->create($user), 'create() failed: '.$game->error);
-		$this->assertTrue($game->canBeEditedBy($user));
-
-		$stranger = new User($db);
-		$stranger->id = 999999;
-		$stranger->rights = new stdClass();
-		$this->assertFalse($game->canBeEditedBy($stranger));
-	}
-
-	/**
-	 * RG-32: past the delay, the author alone can no longer edit.
-	 *
-	 * @return void
-	 */
-	public function testCannotBeEditedByAuthorPastDelay()
-	{
-		global $user, $db;
+		// User::hasRight() returns 0 for any module absent from $conf->modules, and
+		// the test entity is not necessarily the one the module was enabled on
+		$moduleWasEnabled = !empty($conf->modules['babyfoot']);
+		$conf->modules['babyfoot'] = 'babyfoot';
 
 		$game = $this->makeGame();
 		$this->assertGreaterThan(0, $game->create($user), 'create() failed: '.$game->error);
 
-		// A user owning modify_own only, having created the game 48 hours ago
+		$allowed = new User($db);
+		$allowed->id = 123456;
+		$allowed->rights = new stdClass();
+		$allowed->rights->babyfoot = new stdClass();
+		$allowed->rights->babyfoot->modify_all = 1;
+		$this->assertTrue($game->canBeEditedBy($allowed));
+
+		// The author of the game holds no privilege of their own any more
 		$author = new User($db);
 		$author->id = (int) $user->id;
 		$author->rights = new stdClass();
 		$author->rights->babyfoot = new stdClass();
-		$author->rights->babyfoot->modify_own = 1;
-
-		$game->date_creation = dol_now() - (48 * 3600);
 		$this->assertFalse($game->canBeEditedBy($author));
 
-		$game->date_creation = dol_now() - 3600;
-		$this->assertTrue($game->canBeEditedBy($author));
+		// And the age of the record changes nothing either way
+		$game->date_creation = dol_now() - (365 * 24 * 3600);
+		$this->assertTrue($game->canBeEditedBy($allowed));
+		$this->assertFalse($game->canBeEditedBy($author));
+
+		if (!$moduleWasEnabled) {
+			unset($conf->modules['babyfoot']);
+		}
 	}
 }

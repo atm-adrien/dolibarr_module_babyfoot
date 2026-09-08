@@ -62,7 +62,6 @@ $form = new Form($db);
 // Values kept to refill the form when the game is refused
 $postedScore = array(1 => '', 2 => '');
 $postedPlayers = array();
-$postedDate = 0;
 
 
 /*
@@ -89,18 +88,10 @@ if ($action === 'add') {
 	$postedScore[1] = GETPOSTINT('score_team1');
 	$postedScore[2] = GETPOSTINT('score_team2');
 
-	$dateGame = dol_mktime(
-		GETPOSTINT('date_gamehour'),
-		GETPOSTINT('date_gamemin'),
-		0,
-		GETPOSTINT('date_gamemonth'),
-		GETPOSTINT('date_gameday'),
-		GETPOSTINT('date_gameyear')
-	);
-	if (empty($dateGame)) {
-		$dateGame = dol_now();
-	}
-	$postedDate = $dateGame;
+	// The screen records a game that has just been played: the date is never chosen
+	// here. Backdating stays possible from the game card, which is what makes the
+	// isLatestDate() guard below still meaningful.
+	$dateGame = dol_now();
 
 	$game = new Game($db);
 	$game->date_game = $dateGame;
@@ -110,7 +101,7 @@ if ($action === 'add') {
 	$game->setPlayers($players);
 
 	// RG-08: only a warning, never a blocker
-	$validator = new GameValidator($db, (int) $conf->entity, $config);
+	$validator = new GameValidator($db, (int) $conf->entity);
 	$duplicateId = $validator->findRecentDuplicate($mode, (int) $postedScore[1], (int) $postedScore[2], $players);
 
 	// Section 9: a game older than the most recent one rebuilds the whole chain,
@@ -146,12 +137,11 @@ if ($action === 'add') {
 		// No redirect to the card: come back on a blank form, ready for the next game
 		$postedScore = array(1 => '', 2 => '');
 		$postedPlayers = array();
-		$postedDate = 0;
 		$action = '';
 	} else {
 		if (!empty($game->validationErrors)) {
 			foreach ($game->validationErrors as $errorKey) {
-				setEventMessages($langs->trans($errorKey, $config['score_max']), null, 'errors');
+				setEventMessages($langs->trans($errorKey, BabyfootConfig::SCORE_MAX), null, 'errors');
 			}
 		} else {
 			setEventMessages($langs->trans(!empty($game->error) ? $game->error : 'BabyfootErrValidation'), null, 'errors');
@@ -170,14 +160,15 @@ $arrayofcss = array();
 
 llxHeader('', $title, '', '', 0, 0, $arrayofjs, $arrayofcss);
 
-print load_fiche_titre($title, '', 'babyfoot@babyfoot');
+print load_fiche_titre($title, '', 'fa-futbol');
 
-print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'" name="quickadd">';
+print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'" name="quickadd" class="babyfoot-quickadd">';
 print '<input type="hidden" name="token" value="'.newToken().'">';
 print '<input type="hidden" name="action" value="add">';
 print '<input type="hidden" name="mode" value="'.dol_escape_htmltag($mode).'">';
 
-// Mode selector: two wide buttons, switching reloads the page in GET
+// Mode selector: a segmented control, switching reloads the page in GET
+print '<div class="babyfoot-modebar">';
 print '<div class="babyfoot-mode-selector">';
 foreach (BabyfootConfig::gameModes() as $availableMode) {
 	$cssActive = ($availableMode === $mode) ? ' babyfoot-mode-active' : '';
@@ -187,10 +178,15 @@ foreach (BabyfootConfig::gameModes() as $availableMode) {
 	print '</a>';
 }
 print '</div>';
+print '</div>';
 
-// The two team blocks
+// The two team blocks, always side by side whatever the screen width
 print '<div class="babyfoot-teams">';
 for ($team = 1; $team <= 2; $team++) {
+	if ($team === 2) {
+		print '<div class="babyfoot-vs">'.dol_escape_htmltag($langs->trans('BabyfootVersus')).'</div>';
+	}
+
 	print '<div class="babyfoot-team babyfoot-team'.$team.'">';
 	print '<div class="babyfoot-team-title">'.dol_escape_htmltag($langs->trans('BabyfootTeam'.$team)).'</div>';
 
@@ -206,40 +202,29 @@ for ($team = 1; $team <= 2; $team++) {
 
 		print '<div class="babyfoot-player-slot">';
 		// $notdisabled = 1 (15th argument) restricts the list to active users
-		print $form->select_dolusers($selected, $fieldName, 1, null, 0, '', '', '0', 0, -1, '', 0, '', 'minwidth150 maxwidth300', 1);
+		print $form->select_dolusers($selected, $fieldName, 1, null, 0, '', '', '0', 0, -1, '', 0, '', 'babyfoot-player-select', 1);
 		print '</div>';
 	}
 
 	print '<div class="babyfoot-score-row">';
-	print '<button type="button" class="button babyfoot-score-btn" data-target="score_team'.$team.'" data-step="-1">&minus;</button>';
-	print '<input type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="'.((int) $config['score_max']).'"';
+	print '<label class="babyfoot-score-label" for="score_team'.$team.'">'.dol_escape_htmltag($langs->trans('BabyfootScore')).'</label>';
+	print '<input type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="'.BabyfootConfig::SCORE_MAX.'"';
 	print ' class="babyfoot-score-input" id="score_team'.$team.'" name="score_team'.$team.'"';
+	print ' aria-label="'.dol_escape_htmltag($langs->trans('BabyfootScoreTeam'.$team)).'"';
 	print ' value="'.dol_escape_htmltag((string) $postedScore[$team]).'">';
-	print '<button type="button" class="button babyfoot-score-btn" data-target="score_team'.$team.'" data-step="1">+</button>';
 	print '</div>';
 
 	print '</div>';
 }
 print '</div>';
 
-// Date and time, collapsed by default
-print '<div class="babyfoot-datebox">';
-print '<a href="#" onclick="babyfootToggleDateBox(\'babyfoot-datefields\'); return false;">';
-print dol_escape_htmltag($langs->trans('BabyfootChangeDate'));
-print '</a>';
-print '<div id="babyfoot-datefields" class="hideobject">';
-print $form->selectDate($postedDate > 0 ? $postedDate : dol_now(), 'date_game', 1, 1, 0, 'quickadd', 1, 0);
-print '</div>';
-print '</div>';
-
-print '<input type="submit" class="button babyfoot-submit" value="'.dol_escape_htmltag($langs->trans('BabyfootSaveGame')).'">';
+print $form->buttonsSaveCancel('BabyfootSaveGame', '', array(), false, 'babyfoot-submit');
 
 print '</form>';
 
 // Client side helpers only: every rule is enforced again server side
 print '<script nonce="'.getNonce().'" type="text/javascript">';
 print 'jQuery(document).ready(function () {';
-print '	babyfootBindScoreButtons('.((int) $config['score_max']).');';
 for ($team = 1; $team <= 2; $team++) {
 	$relation = ($team === 1) ? 'teammate' : 'opponent';
 	for ($slot = 1; $slot <= $playersPerTeam; $slot++) {

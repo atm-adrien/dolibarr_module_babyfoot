@@ -43,7 +43,7 @@ class box_babyfoot_ranking extends ModeleBoxes
 	public $boxcode = 'babyfootranking';
 
 	/** @var string Picto of the box */
-	public $boximg = 'babyfoot@babyfoot';
+	public $boximg = '^fa-futbol';
 
 	/** @var string Label of the box */
 	public $boxlabel;
@@ -101,9 +101,8 @@ class box_babyfoot_ranking extends ModeleBoxes
 			return;
 		}
 
-		$config = BabyfootConfig::resolve();
 		$repository = new RankingRepository($this->db, (int) $conf->entity);
-		$ranking = $repository->getRanking(BabyfootConfig::MODE_ALL, (int) $config['min_games_ranked'], 0, 0);
+		$ranking = $repository->getRanking(BabyfootConfig::MODE_ALL, 0, 0, 0);
 
 		// Empty state (section 9): a link to the entry screen, never an empty table
 		if (empty($ranking)) {

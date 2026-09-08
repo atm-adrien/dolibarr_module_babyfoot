@@ -43,22 +43,15 @@ if (empty($user->id)) {
 class GameValidatorTest extends CommonClassTest
 {
 	/**
-	 * Build a validator using the default settings of the spec (section 7).
+	 * Build a validator. The scoring rules are constants, nothing to inject.
 	 *
-	 * @param	array			$overrides	Settings to override
-	 * @return	GameValidator				Validator under test
+	 * @return	GameValidator	Validator under test
 	 */
-	private function validator($overrides = array())
+	private function validator()
 	{
 		global $db, $conf;
 
-		$config = array_merge(array(
-			'score_max' => 10,
-			'score_exact' => true,
-			'allow_draw' => false,
-		), $overrides);
-
-		return new GameValidator($db, (int) $conf->entity, $config);
+		return new GameValidator($db, (int) $conf->entity);
 	}
 
 	/**
@@ -192,50 +185,26 @@ class GameValidatorTest extends CommonClassTest
 	}
 
 	/**
-	 * RG-04: with BABYFOOT_SCORE_EXACT on, the winner must reach the max score.
+	 * RG-04: the winner always has to reach the maximum score.
 	 *
 	 * @return void
 	 */
-	public function testRejectsShortGameWhenExactScoreRequired()
+	public function testRejectsShortGame()
 	{
 		$errors = $this->validator()->validate('1v1', 8, 5, dol_now() - 60, $this->players1v1());
 		$this->assertContains('BabyfootErrScoreExact', $errors);
 	}
 
 	/**
-	 * RG-04: with BABYFOOT_SCORE_EXACT off, a short game is accepted.
+	 * RG-05: a draw is never a valid result, whatever the score.
 	 *
 	 * @return void
 	 */
-	public function testAcceptsShortGameWhenExactScoreNotRequired()
+	public function testRejectsDraw()
 	{
-		$validator = $this->validator(array('score_exact' => false));
-		$errors = $validator->validate('1v1', 8, 5, dol_now() - 60, $this->players1v1());
-		$this->assertSame(array(), $errors);
-	}
-
-	/**
-	 * RG-05: draws are rejected by default.
-	 *
-	 * @return void
-	 */
-	public function testRejectsDrawByDefault()
-	{
-		$validator = $this->validator(array('score_exact' => false));
-		$errors = $validator->validate('1v1', 7, 7, dol_now() - 60, $this->players1v1());
-		$this->assertContains('BabyfootErrDrawNotAllowed', $errors);
-	}
-
-	/**
-	 * RG-05: draws are accepted when BABYFOOT_ALLOW_DRAW is on.
-	 *
-	 * @return void
-	 */
-	public function testAcceptsDrawWhenAllowed()
-	{
-		$validator = $this->validator(array('score_exact' => false, 'allow_draw' => true));
-		$errors = $validator->validate('1v1', 7, 7, dol_now() - 60, $this->players1v1());
-		$this->assertSame(array(), $errors);
+		$validator = $this->validator();
+		$this->assertContains('BabyfootErrDrawNotAllowed', $validator->validate('1v1', 7, 7, dol_now() - 60, $this->players1v1()));
+		$this->assertContains('BabyfootErrDrawNotAllowed', $validator->validate('1v1', 10, 10, dol_now() - 60, $this->players1v1()));
 	}
 
 	/**

@@ -79,21 +79,48 @@ un tableau résolu, jamais `$conf`.
 |---|---|---|
 | D4 | Pas de recalcul partiel : toute modification non terminale déclenche `recomputeAll()` | Un chemin de code au lieu de deux, idempotence par construction. RG-30 satisfait fonctionnellement. |
 | D9 | Colonnes `elo_all_before/after/delta` ajoutées sur `babyfoot_game_player` | Sans elles, la courbe d'Elo du mode `all` exigerait un rejeu à chaque affichage. |
-| D10 | **RG-15 prime sur RG-14** : espérance commune au camp, `K` individuel par joueur et par mode | Les deux règles de la spec étaient incompatibles en 2v2 (novice + confirmé). |
+| D10 | **RG-15 abandonnée** : `K` unique de 40 pour tous, aucune notion de débutant | Le conflit RG-14/RG-15 en 2v2 disparaît avec un K commun. Les deux joueurs d'un camp reçoivent le même delta. |
 | D11 | Série en cours affichée = toujours celle de la ligne `mode = 'all'` | Le glossaire définit la série comme globale ; elle est stockée 3 fois. |
 | D12 | Flèche d'évolution du rang = par rapport au rang précédant la propre dernière partie du joueur | Non spécifié par la spec. |
 | D13 | Filtre « mes parties » = parties où l'utilisateur **a joué** (pas celles qu'il a saisies) | RG-07 rend les deux notions distinctes. |
-| D14 | RG-16 : `écart = abs(score1 - score2)`, facteur planché à `1.0` | La règle était tronquée dans la spec. |
+| D14 | **RG-16 abandonnée** : l'écart de buts ne pondère jamais `K` | Demande explicite. `EloCalculator::delta()` ne reçoit plus les scores. |
+| D15 | **RG-19 abandonnée** : on figure au classement dès la première partie | Plus de seuil, donc plus de section « non classés » ni de `getUnranked()`. |
+| D16 | **RG-32 réduite au seul droit `modify_all`** : plus de délai, plus de droit `modify_own` | La notion d'auteur ne sert plus qu'à la traçabilité. |
 
 ## Pièges connus
 
 - **`$this->const` : le 7ᵉ élément (`deleteonunactive`) doit valoir `0`.** À `1`, la désactivation
   du module supprime les constantes et un paramétrage personnalisé est perdu à la réactivation —
   ce que le critère d'acceptation de la spec interdit explicitement. Vérifié par un cycle
-  désactivation/réactivation avec `BABYFOOT_SCORE_MAX` forcé à 7.
+  désactivation/réactivation avec `BABYFOOT_ELO_INITIAL` forcé à 1200.
 - **Tester l'activation/désactivation dans des processus PHP séparés.** Enchaîner
   `unActivateModule()` puis `activateModule()` dans le même processus renvoie `nbmodules = 0` :
   `$conf` est mis en cache en mémoire. Ce n'est pas un bug du module.
+- **Le picto du module est `fa-futbol`, écrit `'^fa-futbol'` partout où Dolibarr le
+  passe à `img_object()`** — `modBabyfoot::$picto`, `Game::$picto`, `$boximg` du widget.
+  Sans le `^`, `img_object()` préfixe `object_`, ce qui casse la détection FontAwesome
+  d'`img_picto()` et affiche le picto générique. Dans les appels directs à `img_picto()`,
+  `load_fiche_titre()`, `dol_get_fiche_head()` et `print_barre_liste()`, écrire `'fa-futbol'` nu.
+- **`module_parts['icon']` doit être déclaré à la main.** L'icône du menu du bandeau ne
+  vient ni du `prefix` du menu ni de `$this->picto` : le thème lit `MAIN_MODULE_BABYFOOT_ICON`
+  et, faute de constante, écrase le glyphe par `div.mainmenu.babyfoot span::before { content: "\f249" }`.
+  `DolibarrModules::insert_module_parts()` déduit bien cette constante de `$this->picto`, mais
+  son test `/^fa-/` échoue sur `'^fa-futbol'`. La constante n'est écrite qu'à l'activation :
+  toute modification impose un cycle désactivation/réactivation pour être visible.
+- **Un sous-menu gauche doit avoir une `position` supérieure à celle de son parent.**
+  `Menubase::menuLoad()` insère un enfant uniquement si le couple
+  (`fk_mainmenu`, `fk_leftmenu`) de son parent figure déjà dans la liste construite.
+  Parent déclaré après l'enfant : celui-ci disparaît de l'affichage sans erreur,
+  seul un `dol_syslog` de niveau WARNING le signale.
+- **`session_cache_limiter('public')` doit être appelé AVANT `main.inc.php`** dans
+  `css/babyfoot.css.php` et `js/babyfoot.js.php`, comme le fait `theme/eldy/style.css.php`.
+  Appelé après, la session est déjà ouverte et PHP émet un warning imprimé en tête du
+  fichier : le parseur CSS avale alors la première règle en récupération d'erreur (donc
+  `.babyfoot-teams`, et l'écran de saisie perd sa grille), et le JS ne se parse plus du tout.
+  Les deux fichiers sont servis avec `max-age=86400` : toute modification exige un
+  rechargement forcé du navigateur pour être constatée.
+- **`lib/babyfoot.lib.php` : le 6ᵉ argument de `complete_head_from_modules()` est `$type`,
+  pas un picto.** Il vaut `'babyfoot@babyfoot'` et ne doit pas suivre les changements d'icône.
 - `get_next_value()` du core attend un nom de table **sans** préfixe. C'est le seul endroit du
   module où un nom de table s'écrit sans `$db->prefix()`.
 - `rowid`, `ref`, `mode` et `status` déclenchent le gate `sqlfluff-lint` (mots-clés réservés). Les
@@ -113,8 +140,14 @@ un tableau résolu, jamais `$conf`.
   `setStatusCommon()` clone l'objet pour construire `oldcopy` et échouerait.
 - `fetchCommon()` retourne le **rowid** quand il trouve, pas `1`. Le contrat des `fetch()` du module
   est donc `>0` trouvé, `0` non trouvé, `<0` erreur.
-- Le K du calcul Elo est lu sur `nb_games` **du mode concerné**. Un joueur peut donc être novice en
-  1v1 et confirmé en `all` sur la même partie : les deltas des deux lignes diffèrent. C'est voulu.
+- **Les règles de jeu et le `K` sont des constantes, pas des réglages.** `BabyfootConfig::SCORE_MAX`
+  et `BabyfootConfig::ELO_K` ; le vainqueur doit atteindre `SCORE_MAX`, le nul est refusé, aucun
+  seuil pour être classé. Ne pas les réintroduire dans `resolve()`, qui ne porte plus que
+  `elo_initial`, `prefill_current_user` et `default_mode`.
+- **`User::hasRight()` retourne 0 si `isModEnabled($module)` est faux**, donc pour toute entité où le
+  module n'est pas activé. Un test PHPUnit portant sur un droit doit forcer
+  `$conf->modules['babyfoot']` lui-même : c'est ce qui faisait échouer les tests de droits, sans
+  aucun rapport avec le code testé.
 - `recomputeAll()` ouvre sa propre transaction et peut être appelée depuis celle de `Game::create()`.
   L'imbrication `begin`/`commit` de DoliDB est comptée par références, mais un `rollback()` interne
   annule tout — comportement voulu : si le recalcul échoue, la partie ne s'enregistre pas.

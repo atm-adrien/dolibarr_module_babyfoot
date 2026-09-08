@@ -200,7 +200,7 @@ if ($user->hasRight('babyfoot', 'create')) {
 	$newCardButton = dolGetButtonTitle($langs->trans('BabyfootNewGame'), '', 'fa fa-plus-circle', dol_buildpath('/babyfoot/game_quickadd.php', 1));
 }
 
-print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $paramsUrl, $sortfield, $sortorder, '', count($rows), $nbTotal, 'babyfoot@babyfoot', 0, $newCardButton, '', $limit);
+print_barre_liste($title, $page, $_SERVER['PHP_SELF'], $paramsUrl, $sortfield, $sortorder, '', count($rows), $nbTotal, 'fa-futbol', 0, $newCardButton, '', $limit);
 
 // Empty state (section 9): explicit message and a link to the entry screen
 if ($nbTotal === 0 && !$hasFilter) {

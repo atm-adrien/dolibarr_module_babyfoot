@@ -136,7 +136,7 @@ function babyfootStatsGameTable($games, $titleKey, $db, $langs)
 
 llxHeader('', $langs->trans('BabyfootMenuStats'), '', '', 0, 0, array(), array());
 
-print load_fiche_titre($langs->trans('BabyfootMenuStats'), '', 'babyfoot@babyfoot');
+print load_fiche_titre($langs->trans('BabyfootMenuStats'), '', 'fa-futbol');
 
 // Empty state (section 9): no chart at all rather than empty charts
 if ((int) $totals['nb_games'] === 0) {

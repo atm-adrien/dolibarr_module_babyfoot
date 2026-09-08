@@ -15,14 +15,16 @@ babyfootDocumentationFileNotFound = Le fichier de documentation docs/configurati
 # Rights
 BabyfootRightRead = Consulter les parties, le classement et les statistiques
 BabyfootRightCreate = Saisir une partie
-BabyfootRightModifyOwn = Modifier ou annuler une partie que l'on a saisie, dans le délai imparti
 BabyfootRightModifyAll = Modifier, annuler ou supprimer toute partie
 BabyfootRightAdmin = Configurer le module et lancer un recalcul du classement
 
 # Menus
 BabyfootMenuTop = Babyfoot
-BabyfootMenuNewGame = Nouvelle partie
+BabyfootMenuNewGame = Créer une partie
 BabyfootMenuGames = Parties
+BabyfootMenuGameList = Liste des parties
+BabyfootMenuPlayers = Joueurs
+BabyfootMenuPlayerList = Liste des joueurs
 BabyfootMenuRanking = Classement
 BabyfootMenuStats = Statistiques
 
@@ -30,6 +32,7 @@ BabyfootMenuStats = Statistiques
 BabyfootGame = Partie
 BabyfootGames = Parties
 BabyfootPlayer = Joueur
+BabyfootPlayers = Joueurs
 BabyfootTeam = Camp
 BabyfootTeam1 = Camp bleu
 BabyfootTeam2 = Camp rouge
@@ -38,6 +41,7 @@ BabyfootDateGame = Date de la partie
 BabyfootMode = Mode
 Babyfoot1v1 = 1 contre 1
 Babyfoot2v2 = 2 contre 2
+BabyfootVersus = VS
 BabyfootRankingOverall = Général
 BabyfootScoreTeam1 = Score camp bleu
 BabyfootScoreTeam2 = Score camp rouge
@@ -56,16 +60,7 @@ BabyfootNumRefStandardDesc = Renvoie un numéro au format %s, remis à zéro cha
 
 # Settings
 BabyfootSetup = Configuration du module Babyfoot
-BABYFOOT_SCORE_MAX = Score maximum d'une partie
-BABYFOOT_SCORE_EXACT = Le camp gagnant doit atteindre exactement le score maximum
-BABYFOOT_ALLOW_DRAW = Autoriser les matchs nuls
 BABYFOOT_ELO_INITIAL = Elo de départ
-BABYFOOT_ELO_K = Coefficient K des joueurs confirmés
-BABYFOOT_ELO_K_NOVICE = Coefficient K des débutants
-BABYFOOT_ELO_NOVICE_GAMES = Nombre de parties avant de quitter le statut de débutant
-BABYFOOT_ELO_MARGIN = Pondérer le coefficient K par l'écart de buts
-BABYFOOT_MIN_GAMES_RANKED = Nombre de parties minimum pour figurer au classement
-BABYFOOT_EDIT_DELAY = Délai de modification par l'auteur, en heures
 BABYFOOT_PREFILL_CURRENT_USER = Pré-positionner l'utilisateur connecté comme premier joueur
 BABYFOOT_DEFAULT_MODE = Mode de jeu proposé par défaut
 
@@ -93,6 +88,7 @@ BabyfootFannyTaken = Fannys subies
 BabyfootCurrentStreak = Série en cours
 BabyfootBestStreak = Meilleure série
 BabyfootEloPeak = Elo maximum atteint
+BabyfootEloOverall = Elo général
 BabyfootDateLastGame = Dernière partie
 BabyfootErrNoPlayer = La partie ne contient aucun joueur
 BabyfootErrLockFailed = Impossible d'obtenir le verrou de calcul du classement
@@ -108,7 +104,6 @@ BabyfootGameCancelled = Partie %s annulée
 BabyfootGameReopened = Partie %s rouverte
 BabyfootGameDeleted = Partie supprimée
 BabyfootGameNotFound = Cette partie n'existe pas ou a été supprimée
-BabyfootChangeDate = Modifier la date et l'heure
 BabyfootScore = Score
 BabyfootDraw = Match nul
 BabyfootMyGames = Mes parties
@@ -130,8 +125,8 @@ BabyfootPeriod90 = 90 jours
 BabyfootPeriodYear = 1 an
 BabyfootPeriodAll = Tout
 BabyfootNoRankingYet = Aucun classement pour le moment, aucune partie n'a encore été enregistrée
-BabyfootNobodyRankedYet = Personne n'a encore atteint les %s parties nécessaires pour être classé
-BabyfootUnrankedPlayers = Joueurs non classés (%s)
+BabyfootNoPlayerYet = Aucun joueur pour le moment, aucune partie n’a encore été enregistrée
+BabyfootNobodyRankedYet = Aucun joueur classé sur cette période
 
 # Player card
 BabyfootPlayerNotFound = Ce joueur est introuvable et n'a aucune partie enregistrée

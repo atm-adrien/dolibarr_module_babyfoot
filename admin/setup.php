@@ -56,16 +56,7 @@ $form = new Form($db);
  * @var array<string,string> Setting name to input type
  */
 $settings = array(
-	'BABYFOOT_SCORE_MAX' => 'int',
-	'BABYFOOT_SCORE_EXACT' => 'bool',
-	'BABYFOOT_ALLOW_DRAW' => 'bool',
 	'BABYFOOT_ELO_INITIAL' => 'int',
-	'BABYFOOT_ELO_K' => 'int',
-	'BABYFOOT_ELO_K_NOVICE' => 'int',
-	'BABYFOOT_ELO_NOVICE_GAMES' => 'int',
-	'BABYFOOT_ELO_MARGIN' => 'bool',
-	'BABYFOOT_MIN_GAMES_RANKED' => 'int',
-	'BABYFOOT_EDIT_DELAY' => 'int',
 	'BABYFOOT_PREFILL_CURRENT_USER' => 'bool',
 	'BABYFOOT_DEFAULT_MODE' => 'mode',
 );
@@ -158,7 +149,7 @@ $linkback = '<a href="'.DOL_URL_ROOT.'/admin/modules.php?restore_lastsearch_valu
 print load_fiche_titre($langs->trans('BabyfootSetup'), $linkback, 'title_setup');
 
 $head = babyfootAdminPrepareHead();
-print dol_get_fiche_head($head, 'settings', $langs->trans('ModuleBabyfootName'), -1, 'babyfoot@babyfoot');
+print dol_get_fiche_head($head, 'settings', $langs->trans('ModuleBabyfootName'), -1, 'fa-futbol');
 
 // Settings form
 print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';

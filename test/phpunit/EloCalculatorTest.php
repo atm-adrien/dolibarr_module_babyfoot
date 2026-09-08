@@ -25,6 +25,7 @@ global $conf, $user, $langs, $db;
 
 require_once dirname(__FILE__).'/../../../../master.inc.php';
 require_once dirname(__FILE__).'/../../../../../test/phpunit/CommonClassTest.class.php';
+require_once dirname(__FILE__).'/../../class/babyfootconfig.class.php';
 require_once dirname(__FILE__).'/../../class/elocalculator.class.php';
 
 if (empty($user->id)) {
@@ -44,14 +45,13 @@ if (empty($user->id)) {
 class EloCalculatorTest extends CommonClassTest
 {
 	/**
-	 * Build a calculator using the default settings of the spec (section 7).
+	 * Build a calculator on the single K factor of the module.
 	 *
-	 * @param	bool			$margin		Enable the goal difference weighting (RG-16)
-	 * @return	EloCalculator				Calculator under test
+	 * @return	EloCalculator	Calculator under test
 	 */
-	private function calculator($margin = false)
+	private function calculator()
 	{
-		return new EloCalculator(24, 40, 15, $margin);
+		return new EloCalculator(BabyfootConfig::ELO_K);
 	}
 
 	/**
@@ -112,45 +112,6 @@ class EloCalculatorTest extends CommonClassTest
 	}
 
 	/**
-	 * RG-15: K is the novice one strictly below the threshold.
-	 *
-	 * @return void
-	 */
-	public function testCoefficientSwitchesAtNoviceThreshold()
-	{
-		$calc = $this->calculator();
-		$this->assertSame(40, $calc->coefficient(0));
-		$this->assertSame(40, $calc->coefficient(14));
-		$this->assertSame(24, $calc->coefficient(15));
-		$this->assertSame(24, $calc->coefficient(200));
-	}
-
-	/**
-	 * RG-16 and decision D14: the margin factor is floored at 1.0 and grows
-	 * with the goal gap.
-	 *
-	 * @return void
-	 */
-	public function testMarginFactorIsFlooredAtOne()
-	{
-		$calc = $this->calculator(true);
-		$this->assertEqualsWithDelta(1.0, $calc->marginFactor(5, 5), 0.0001);
-		$this->assertEqualsWithDelta(1.0, $calc->marginFactor(10, 9), 0.0001);
-		$this->assertEqualsWithDelta(1.1, $calc->marginFactor(10, 8), 0.0001);
-		$this->assertEqualsWithDelta(1.9, $calc->marginFactor(10, 0), 0.0001);
-	}
-
-	/**
-	 * RG-16: the margin factor is neutral when the option is off.
-	 *
-	 * @return void
-	 */
-	public function testMarginFactorIsNeutralWhenDisabled()
-	{
-		$this->assertEqualsWithDelta(1.0, $this->calculator(false)->marginFactor(10, 0), 0.0001);
-	}
-
-	/**
 	 * Acceptance criterion (spec section 10): two players at 1000, K = 40,
 	 * a win for team 1 gives exactly +20 / -20.
 	 *
@@ -159,10 +120,8 @@ class EloCalculatorTest extends CommonClassTest
 	public function testAcceptanceCriterionTwentyPoints()
 	{
 		$calc = $this->calculator();
-		$winner = $calc->delta(1000, 1000, EloCalculator::RESULT_WIN, 0, 10, 5);
-		$loser = $calc->delta(1000, 1000, EloCalculator::RESULT_LOSS, 0, 5, 10);
-		$this->assertSame(20, $winner);
-		$this->assertSame(-20, $loser);
+		$this->assertSame(20, $calc->delta(1000, 1000, EloCalculator::RESULT_WIN));
+		$this->assertSame(-20, $calc->delta(1000, 1000, EloCalculator::RESULT_LOSS));
 	}
 
 	/**
@@ -172,8 +131,7 @@ class EloCalculatorTest extends CommonClassTest
 	 */
 	public function testDrawBetweenEqualPlayersGivesZero()
 	{
-		$calc = $this->calculator();
-		$this->assertSame(0, $calc->delta(1000, 1000, EloCalculator::RESULT_DRAW, 0, 5, 5));
+		$this->assertSame(0, $this->calculator()->delta(1000, 1000, EloCalculator::RESULT_DRAW));
 	}
 
 	/**
@@ -184,26 +142,43 @@ class EloCalculatorTest extends CommonClassTest
 	public function testUpsetPaysMoreThanExpectedWin()
 	{
 		$calc = $this->calculator();
-		$upset = $calc->delta(1000, 1400, EloCalculator::RESULT_WIN, 0, 10, 8);
-		$expected = $calc->delta(1000, 1000, EloCalculator::RESULT_WIN, 0, 10, 8);
+		$upset = $calc->delta(1000, 1400, EloCalculator::RESULT_WIN);
+		$expected = $calc->delta(1000, 1000, EloCalculator::RESULT_WIN);
 		$this->assertGreaterThan($expected, $upset);
 		$this->assertSame(36, $upset);
 	}
 
 	/**
-	 * Decision D10 and RG-15: within one team, a novice moves more than a
-	 * confirmed player, because K stays individual while the expected score is
-	 * shared. Both deltas keep the same sign.
+	 * With one K for everybody, the two players of a 2v2 side always move by the
+	 * same amount: the delta depends on the team ratings and on nothing else. This
+	 * is what replaced decision D10.
 	 *
 	 * @return void
 	 */
-	public function testNoviceAndConfirmedTeammatesGetDifferentDeltas()
+	public function testBothTeammatesGetTheSameDelta()
 	{
 		$calc = $this->calculator();
-		$novice = $calc->delta(1100, 1000, EloCalculator::RESULT_WIN, 3, 10, 7);
-		$confirmed = $calc->delta(1100, 1000, EloCalculator::RESULT_WIN, 40, 10, 7);
-		$this->assertGreaterThan($confirmed, $novice);
-		$this->assertGreaterThan(0, $confirmed);
+		$teamElo = $calc->teamRating(array(1200, 800));
+
+		$first = $calc->delta($teamElo, 1000, EloCalculator::RESULT_WIN);
+		$second = $calc->delta($teamElo, 1000, EloCalculator::RESULT_WIN);
+
+		$this->assertSame($first, $second);
+		$this->assertSame(20, $first, 'a 1200 and an 800 average out to 1000');
+	}
+
+	/**
+	 * The formula stays zero sum between two equally rated sides.
+	 *
+	 * @return void
+	 */
+	public function testDeltasAreZeroSumBetweenEqualTeams()
+	{
+		$calc = $this->calculator();
+		$winner = $calc->delta(1150, 1150, EloCalculator::RESULT_WIN);
+		$loser = $calc->delta(1150, 1150, EloCalculator::RESULT_LOSS);
+
+		$this->assertSame(0, $winner + $loser);
 	}
 
 	/**
@@ -213,9 +188,7 @@ class EloCalculatorTest extends CommonClassTest
 	 */
 	public function testDeltaIsRoundedToNearestInteger()
 	{
-		$calc = $this->calculator();
-		$delta = $calc->delta(1000, 1050, EloCalculator::RESULT_WIN, 0, 10, 6);
-		$this->assertSame(23, $delta);
+		$this->assertSame(23, $this->calculator()->delta(1000, 1050, EloCalculator::RESULT_WIN));
 	}
 
 	/**
@@ -227,7 +200,7 @@ class EloCalculatorTest extends CommonClassTest
 	{
 		$calc = $this->calculator();
 		foreach (array(500, 1000, 1500, 2500) as $opponent) {
-			$this->assertGreaterThanOrEqual(0, $calc->delta(1000, $opponent, EloCalculator::RESULT_WIN, 0, 10, 3));
+			$this->assertGreaterThanOrEqual(0, $calc->delta(1000, $opponent, EloCalculator::RESULT_WIN));
 		}
 	}
 }

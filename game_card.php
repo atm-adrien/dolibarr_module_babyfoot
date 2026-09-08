@@ -45,7 +45,6 @@ $id = GETPOSTINT('id');
 $action = GETPOST('action', 'aZ09');
 $confirm = GETPOST('confirm', 'alpha');
 
-$config = BabyfootConfig::resolve();
 $form = new Form($db);
 
 $object = new Game($db);
@@ -139,7 +138,7 @@ if ($action !== '' && $fetchResult > 0) {
 		} else {
 			if (!empty($object->validationErrors)) {
 				foreach ($object->validationErrors as $errorKey) {
-					setEventMessages($langs->trans($errorKey, $config['score_max']), null, 'errors');
+					setEventMessages($langs->trans($errorKey, BabyfootConfig::SCORE_MAX), null, 'errors');
 				}
 			} else {
 				setEventMessages($langs->trans(!empty($object->error) ? $object->error : 'BabyfootErrValidation'), null, 'errors');
@@ -172,7 +171,7 @@ if ($fetchResult <= 0) {
 $object->fetchLines();
 
 $head = babyfootGamePrepareHead($object);
-print dol_get_fiche_head($head, 'card', $langs->trans('BabyfootGame'), -1, 'babyfoot@babyfoot');
+print dol_get_fiche_head($head, 'card', $langs->trans('BabyfootGame'), -1, 'fa-futbol');
 
 // Confirmation dialogs
 if ($action === 'cancel') {
@@ -227,7 +226,7 @@ for ($team = 1; $team <= 2; $team++) {
 			print ' ';
 		}
 		print '<br>'.$langs->trans('BabyfootScoreTeam'.$team).' ';
-		print '<input type="number" min="0" max="'.((int) $config['score_max']).'" name="score_team'.$team.'"';
+		print '<input type="number" min="0" max="'.BabyfootConfig::SCORE_MAX.'" name="score_team'.$team.'"';
 		print ' value="'.((int) ($team === 1 ? $object->score_team1 : $object->score_team2)).'" class="width50">';
 	} else {
 		$labels = array();

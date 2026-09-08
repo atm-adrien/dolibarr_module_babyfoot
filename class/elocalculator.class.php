@@ -34,7 +34,10 @@ class EloCalculator
 	/** @var float Score of a won game */
 	const RESULT_WIN = 1.0;
 
-	/** @var float Score of a drawn game */
+	/**
+	 * @var float Score of a drawn game. A draw can no longer be recorded, but the
+	 *            formula stays defined for it and the stored counters keep their column.
+	 */
 	const RESULT_DRAW = 0.5;
 
 	/** @var float Score of a lost game */
@@ -43,32 +46,17 @@ class EloCalculator
 	/** @var int Rating gap giving a ten to one win expectancy */
 	const RATING_SCALE = 400;
 
-	/** @var int K factor of confirmed players */
-	private $kStandard;
-
-	/** @var int K factor of novice players */
-	private $kNovice;
-
-	/** @var int Number of games played before leaving the novice status */
-	private $noviceGames;
-
-	/** @var bool Whether K is weighted by the goal difference */
-	private $marginEnabled;
+	/** @var int K factor applied to every player alike */
+	private $k;
 
 	/**
 	 * Constructor
 	 *
-	 * @param	int		$kStandard		K factor of confirmed players (BABYFOOT_ELO_K)
-	 * @param	int		$kNovice		K factor of novice players (BABYFOOT_ELO_K_NOVICE)
-	 * @param	int		$noviceGames	Games threshold (BABYFOOT_ELO_NOVICE_GAMES)
-	 * @param	bool	$marginEnabled	Weight K by the goal difference (BABYFOOT_ELO_MARGIN)
+	 * @param	int		$k	K factor of the formula (BabyfootConfig::ELO_K)
 	 */
-	public function __construct(int $kStandard, int $kNovice, int $noviceGames, bool $marginEnabled)
+	public function __construct(int $k)
 	{
-		$this->kStandard = $kStandard;
-		$this->kNovice = $kNovice;
-		$this->noviceGames = $noviceGames;
-		$this->marginEnabled = $marginEnabled;
+		$this->k = $k;
 	}
 
 	/**
@@ -102,62 +90,23 @@ class EloCalculator
 	}
 
 	/**
-	 * K factor of one player, based on how many games they already played (RG-15).
-	 *
-	 * @param	int		$nbGamesPlayed	Games already played by this player in this mode
-	 * @return	int						K factor to apply
-	 */
-	public function coefficient(int $nbGamesPlayed): int
-	{
-		return ($nbGamesPlayed < $this->noviceGames) ? $this->kNovice : $this->kStandard;
-	}
-
-	/**
-	 * Weighting of K by the goal difference (RG-16, decision D14).
-	 *
-	 * Floored at 1.0 so a tight game never shrinks K below its nominal value.
-	 *
-	 * @param	int		$scoreFor		Goals scored by the player side
-	 * @param	int		$scoreAgainst	Goals scored by the other side
-	 * @return	float					Multiplier, always greater than or equal to 1.0
-	 */
-	public function marginFactor(int $scoreFor, int $scoreAgainst): float
-	{
-		if (!$this->marginEnabled) {
-			return 1.0;
-		}
-
-		$gap = abs($scoreFor - $scoreAgainst);
-		if ($gap <= 1) {
-			return 1.0;
-		}
-
-		return 1 + ($gap - 1) / 10;
-	}
-
-	/**
-	 * Elo delta of one player for one game (RG-13, RG-14, RG-15, decision D10).
+	 * Elo delta of one player for one game (RG-13, RG-14).
 	 *
 	 * The expected score comes from the team ratings, so both players of a 2v2
-	 * side share the same expectancy; K stays individual, so their deltas may
-	 * differ in magnitude but never in sign.
+	 * side get the same delta. The goal difference never weighs in.
 	 *
-	 * The individual rating of the player is deliberately not a parameter: it
-	 * only matters through the team average and through its own K factor.
+	 * The individual rating of the player is deliberately not a parameter: it only
+	 * matters through the team average.
 	 *
 	 * @param	float	$ownTeamElo			Rating of the player team (RG-12)
 	 * @param	float	$opponentTeamElo	Rating of the other team
 	 * @param	float	$result				One of RESULT_WIN, RESULT_DRAW, RESULT_LOSS
-	 * @param	int		$nbGamesPlayed		Games already played by this player in this mode
-	 * @param	int		$scoreFor			Goals scored by the player side
-	 * @param	int		$scoreAgainst		Goals scored by the other side
 	 * @return	int							Elo delta, rounded to the nearest integer
 	 */
-	public function delta(float $ownTeamElo, float $opponentTeamElo, float $result, int $nbGamesPlayed, int $scoreFor, int $scoreAgainst): int
+	public function delta(float $ownTeamElo, float $opponentTeamElo, float $result): int
 	{
 		$expected = $this->expectedScore($ownTeamElo, $opponentTeamElo);
-		$k = $this->coefficient($nbGamesPlayed) * $this->marginFactor($scoreFor, $scoreAgainst);
 
-		return (int) round($k * ($result - $expected));
+		return (int) round($this->k * ($result - $expected));
 	}
 }

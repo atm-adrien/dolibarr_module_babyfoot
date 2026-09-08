@@ -73,7 +73,7 @@ class RatingEngine
 		$this->db = $db;
 		$this->entity = $entity;
 		$this->config = is_null($config) ? BabyfootConfig::resolve() : $config;
-		$this->calculator = BabyfootConfig::createCalculator($this->config);
+		$this->calculator = BabyfootConfig::createCalculator();
 	}
 
 	/**
@@ -393,14 +393,7 @@ class RatingEngine
 				}
 
 				$before = (int) $rating->elo;
-				$delta = $this->calculator->delta(
-					$teamRating[$team],
-					$teamRating[$other],
-					$result,
-					(int) $rating->nb_games,
-					$scores[$team],
-					$scores[$other]
-				);
+				$delta = $this->calculator->delta($teamRating[$team], $teamRating[$other], $result);
 
 				$this->applyOnRating($rating, $delta, $result, $scores[$team], $scores[$other], (int) $game->date_game);
 
@@ -573,8 +566,6 @@ class RatingEngine
 	 */
 	private function applyOnRating(Rating $rating, int $delta, float $result, int $scoreFor, int $scoreAgainst, int $dateGame): void
 	{
-		$scoreMax = (int) $this->config['score_max'];
-
 		$rating->elo += $delta;
 		$rating->nb_games++;
 		$rating->goals_for += $scoreFor;
@@ -583,13 +574,13 @@ class RatingEngine
 		if ($result === EloCalculator::RESULT_WIN) {
 			$rating->nb_wins++;
 			$rating->current_streak = ($rating->current_streak > 0) ? $rating->current_streak + 1 : 1;
-			if ($scoreFor === $scoreMax && $scoreAgainst === 0) {
+			if ($scoreFor === BabyfootConfig::SCORE_MAX && $scoreAgainst === 0) {
 				$rating->nb_fanny_given++;
 			}
 		} elseif ($result === EloCalculator::RESULT_LOSS) {
 			$rating->nb_losses++;
 			$rating->current_streak = ($rating->current_streak < 0) ? $rating->current_streak - 1 : -1;
-			if ($scoreAgainst === $scoreMax && $scoreFor === 0) {
+			if ($scoreAgainst === BabyfootConfig::SCORE_MAX && $scoreFor === 0) {
 				$rating->nb_fanny_taken++;
 			}
 		} else {
