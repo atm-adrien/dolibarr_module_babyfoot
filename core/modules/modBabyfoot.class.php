@@ -80,7 +80,7 @@ class modBabyfoot extends DolibarrModules
 		$this->requiredby = array();
 		$this->conflictwith = array();
 		$this->phpmin = array(7, 4);
-		$this->need_dolibarr_version = array(22, 0);
+		$this->need_dolibarr_version = array(21, 0);
 
 		// Settings created on activation, never removed on deactivation (spec section 7).
 		// The scoring rules and the K factor are NOT settings: see BabyfootConfig.
