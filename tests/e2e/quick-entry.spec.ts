@@ -1,28 +1,13 @@
 import { test, expect, Page } from '@playwright/test';
 import { php, submitAndWait } from './dolibarr';
+import { fixtures, loginToFixtureEntity, openBabyfootMenu, Player } from './babyfoot';
 
-type Player = { id: number; label: string };
-type Fixtures = { login: string; password: string; players: Record<'p1' | 'p2' | 'p3' | 'p4', Player> };
 type LastGame = {
   count: number;
   last: null | { id: number; mode: string; score_team1: number; score_team2: number; players: Record<string, number> };
 };
 
-const fixtures: Fixtures = JSON.parse(process.env.E2E_FIXTURES || '{}');
 const { p1, p2, p3, p4 } = fixtures.players;
-
-// Same entity as the fixtures: with Multicompany the login form picks it, not the account.
-async function loginToFixtureEntity(page: Page): Promise<void> {
-  await page.goto('index.php');
-  const entity = page.locator('select#entity');
-  if (await entity.count()) {
-    await entity.selectOption(process.env.E2E_ENTITY || '1');
-  }
-  await page.fill('#username', fixtures.login);
-  await page.fill('#password', fixtures.password);
-  await submitAndWait(page, 'input[type=submit]');
-  await expect(page.locator('#username')).toHaveCount(0);
-}
 
 function lastGame(): LastGame {
   return JSON.parse(php('lastgame.php'));
@@ -39,9 +24,7 @@ async function pickPlayer(page: Page, field: string, player: Player): Promise<vo
 }
 
 async function openQuickEntry2v2(page: Page): Promise<void> {
-  await page.goto('index.php');
-  await submitAndWait(page, '#mainmenua_tools');
-  await submitAndWait(page, '.vmenu a[href*="babyfoot/game_quickadd.php"] >> nth=0');
+  await openBabyfootMenu(page, 'game_quickadd.php');
   await submitAndWait(page, 'a.babyfoot-mode-btn[href*="mode=2v2"]');
 }
 

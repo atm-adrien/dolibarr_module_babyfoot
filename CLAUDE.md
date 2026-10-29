@@ -30,7 +30,8 @@ class/
   rating.class.php             une ligne de classement
   ratingset.class.php          collection [fk_user][mode], chargement base OU mémoire
   ratingengine.class.php       SEULE classe autorisée à écrire dans babyfoot_rating
-  stats/                       repositories de lecture seule (agrégats)
+  stats/                       repositories de lecture seule (agrégats) ; GameRepository
+                               charge N parties en 3 requêtes et lève une Exception sur erreur SQL
   api_babyfoot.class.php       API REST /babyfoot/games — appelle Game, jamais de règle propre
 core/modules/modBabyfoot.class.php    descripteur
 core/modules/babyfoot/                modèle de numérotation BF{yy}{mm}-{0000}
@@ -113,6 +114,9 @@ un tableau résolu, jamais `$conf`.
 - **E2E : les comptes de test portent le préfixe `e2ebabyfoot_`**, c'est par lui que
   `tests/e2e/fixtures/teardown.php` supprime parties et comptes. Avec Multicompany, le login
   choisit l'entité `E2E_ENTITY` dans le formulaire : sans cela la session tombe dans une autre entité.
+- **Les périodes passent par `BabyfootConfig::periods()` / `periodStart()`.** Leurs codes
+  `'30'`, `'90'`, `'365'` deviennent des clés **entières** dans un tableau PHP : comparer avec
+  `(string) $key === $period`, sinon aucune période n'est jamais sélectionnée.
 - **La classe d'API s'appelle `Babyfoot`, pas `BabyfootApi`.** `api/index.php` déduit le nom de
   classe du premier segment d'URL : c'est ce qui sert les routes sous `/babyfoot/...`.
   Dans un test PHPUnit, renseigner `DolibarrApiAccess::$user` avant d'appeler une méthode.

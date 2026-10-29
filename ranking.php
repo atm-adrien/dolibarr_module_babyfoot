@@ -50,11 +50,10 @@ if (!in_array($mode, BabyfootConfig::ratingModes(), true)) {
 // Period filter. "All" is the default: it is the cheapest view, since it reads
 // the cache table instead of aggregating the games.
 $period = GETPOST('period', 'aZ09');
-$allowedPeriods = array('all', '30', '90', '365');
-if (!in_array($period, $allowedPeriods, true)) {
-	$period = 'all';
+if (!in_array($period, BabyfootConfig::periods(), true)) {
+	$period = BabyfootConfig::PERIOD_ALL;
 }
-$dateFrom = ($period === 'all') ? 0 : (dol_now() - ((int) $period * 24 * 3600));
+$dateFrom = BabyfootConfig::periodStart($period);
 
 $repository = new RankingRepository($db, (int) $conf->entity);
 // RG-19 dropped: a single game is enough to be ranked
@@ -183,7 +182,7 @@ $periodLabels = array(
 	'all' => $langs->trans('BabyfootPeriodAll'),
 );
 foreach ($periodLabels as $value => $label) {
-	$css = ($value === $period) ? ' class="babyfoot-winner"' : '';
+	$css = ((string) $value === $period) ? ' class="babyfoot-winner"' : '';
 	print '<a href="'.$_SERVER['PHP_SELF'].'?mode='.urlencode($mode).'&period='.urlencode($value).'"'.$css.'>';
 	print dol_escape_htmltag($label);
 	print '</a> &nbsp; ';

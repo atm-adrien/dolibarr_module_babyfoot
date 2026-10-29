@@ -152,6 +152,59 @@ class RankingRepository
 	}
 
 	/**
+	 * Return every active internal user, whether they have played or not.
+	 *
+	 * Anyone may be picked for a first game, so the list starts from the users and
+	 * not from the ranking. A user who never played has no Elo: it is null, never
+	 * the initial value (section 9).
+	 *
+	 * @param	string	$userEntities	Comma separated entity ids, as returned by getEntity('user')
+	 * @return	array	One row per user, sorted by name
+	 * @throws	Exception	On a database error
+	 */
+	public function getActiveInternalPlayers(string $userEntities): array
+	{
+		$rows = array();
+		$entities = implode(',', array_map('intval', explode(',', $userEntities)));
+
+		$sql = "SELECT u.rowid, u.login, u.firstname, u.lastname,";
+		$sql .= " r.elo, r.nb_games, r.nb_wins, r.current_streak, r.date_last_game";
+		$sql .= " FROM ".$this->db->prefix()."user as u";
+		$sql .= " LEFT JOIN ".$this->db->prefix()."babyfoot_rating as r";
+		$sql .= "   ON r.fk_user = u.rowid AND r.entity = ".((int) $this->entity);
+		$sql .= "   AND r.mode = '".$this->db->escape(BabyfootConfig::MODE_ALL)."'";
+		$sql .= " WHERE u.entity IN (".$entities.")";
+		$sql .= " AND u.statut = 1";
+		$sql .= " AND (u.fk_soc IS NULL OR u.fk_soc = 0)";
+		$sql .= " ORDER BY u.lastname ASC, u.firstname ASC, u.rowid ASC";
+
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			dol_syslog('RankingRepository::getActiveInternalPlayers '.$this->db->lasterror(), LOG_ERR);
+			throw new Exception('RankingRepository::getActiveInternalPlayers failed');
+		}
+		while ($obj = $this->db->fetch_object($resql)) {
+			$hasPlayed = !is_null($obj->nb_games);
+			$nbGames = (int) $obj->nb_games;
+			$rows[] = array(
+				'fk_user' => (int) $obj->rowid,
+				'login' => (string) $obj->login,
+				'firstname' => (string) $obj->firstname,
+				'lastname' => (string) $obj->lastname,
+				'elo' => $hasPlayed ? (int) $obj->elo : null,
+				'nb_games' => $nbGames,
+				'nb_wins' => (int) $obj->nb_wins,
+				'ratio' => ($nbGames > 0) ? ((int) $obj->nb_wins / $nbGames) : 0.0,
+				'current_streak' => (int) $obj->current_streak,
+				'date_last_game' => $hasPlayed ? $this->db->jdate($obj->date_last_game) : null,
+			);
+		}
+		$this->db->free($resql);
+
+		return $rows;
+	}
+
+	/**
 	 * Return the rank variation of every player since their own last game (D12).
 	 *
 	 * The reference is the rank the player held just before their last game: the

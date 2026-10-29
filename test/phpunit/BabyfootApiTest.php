@@ -261,4 +261,152 @@ class BabyfootApiTest extends CommonClassTest
 			$this->assertContains(2, array_column($game['players'], 'fk_user'));
 		}
 	}
+
+	/**
+	 * GET /me answers with the permissions and the module constants.
+	 *
+	 * @return void
+	 */
+	public function testMeExposesRightsAndConstants()
+	{
+		$me = $this->apiAs(array('read', 'create'))->getMe();
+
+		$this->assertSame(array('read' => true, 'create' => true, 'modify_all' => false, 'admin' => false), $me['rights']);
+		$this->assertSame(BabyfootConfig::SCORE_MAX, $me['score_max']);
+		$this->assertMatchesRegularExpression('/^\d+\.\d+\.\d+$/', $me['module_version']);
+	}
+
+	/**
+	 * Games carry the names of their players, and the search matches them.
+	 *
+	 * @return void
+	 */
+	public function testGamesCarryPlayerNamesAndAreSearchable()
+	{
+		global $db;
+
+		$other = new User($db);
+		$this->assertGreaterThan(0, $other->fetch(2));
+
+		$api = $this->apiAs(array('read', 'create'));
+		$id = $api->postGame($this->validGameData());
+
+		$game = $api->getGame($id);
+		foreach ($game['players'] as $player) {
+			$this->assertNotSame('', $player['name']);
+		}
+		$this->assertContains($other->login, array_column($game['players'], 'login'));
+
+		$found = $api->listGames('t.date_game', 'DESC', 0, 0, '', -1, 0, 0, 0, $other->login);
+		$this->assertContains($id, array_column($found, 'id'));
+		$notFound = $api->listGames('t.date_game', 'DESC', 0, 0, '', -1, 0, 0, 0, 'no-such-player-'.uniqid());
+		$this->assertNotContains($id, array_column($notFound, 'id'));
+	}
+
+	/**
+	 * Cancel, reopen and delete, each refused when the status does not allow it.
+	 *
+	 * @return void
+	 */
+	public function testCancelReopenDeleteLifecycle()
+	{
+		$api = $this->apiAs(array('read', 'create', 'modify_all'));
+		$id = $api->postGame($this->validGameData());
+
+		$this->assertSame(400, $this->codeOf(function () use ($api, $id) {
+			$api->reopenGame($id);
+		}));
+		$this->assertSame(Game::STATUS_CANCELED, $api->cancelGame($id)['status']);
+		$this->assertSame(400, $this->codeOf(function () use ($api, $id) {
+			$api->cancelGame($id);
+		}));
+		$this->assertSame(Game::STATUS_VALIDATED, $api->reopenGame($id)['status']);
+
+		$api->deleteGame($id);
+		$this->assertSame(404, $this->codeOf(function () use ($api, $id) {
+			$api->getGame($id);
+		}));
+
+		$creator = $this->apiAs(array('read', 'create'));
+		$other = $creator->postGame($this->validGameData());
+		$this->assertSame(403, $this->codeOf(function () use ($creator, $other) {
+			$creator->deleteGame($other);
+		}));
+	}
+
+	/**
+	 * The player list starts from the users: someone who never played is listed, without Elo.
+	 *
+	 * @return void
+	 */
+	public function testPlayersIncludeUsersWhoNeverPlayed()
+	{
+		global $db, $user;
+
+		$newcomer = new User($db);
+		$newcomer->login = 'bfapitest'.uniqid();
+		$newcomer->lastname = 'Newcomer';
+		$this->assertGreaterThan(0, $newcomer->create($user));
+
+		$players = $this->apiAs(array('read'))->listPlayers();
+		$byId = array_column($players, null, 'fk_user');
+		$this->assertArrayHasKey($newcomer->id, $byId);
+		$this->assertNull($byId[$newcomer->id]['elo']);
+		$this->assertSame(0, $byId[$newcomer->id]['nb_games']);
+	}
+
+	/**
+	 * Player card and Elo history of a player who played, 404 for an unknown id.
+	 *
+	 * @return void
+	 */
+	public function testPlayerCardAndEloHistory()
+	{
+		$api = $this->apiAs(array('read', 'create'));
+		$api->postGame($this->validGameData());
+
+		$card = $api->getPlayer(2);
+		$this->assertSame(2, $card['player']['fk_user']);
+		$this->assertArrayHasKey(BabyfootConfig::MODE_ALL, (array) $card['ratings']);
+		$this->assertNotEmpty($card['last_games']);
+
+		$history = $api->getPlayerEloHistory(2, BabyfootConfig::MODE_ALL);
+		$this->assertCount(((array) $card['ratings'])[BabyfootConfig::MODE_ALL]['nb_games'], $history);
+
+		$this->assertSame(404, $this->codeOf(function () use ($api) {
+			$api->getPlayer(999999999);
+		}));
+		$this->assertSame(400, $this->codeOf(function () use ($api) {
+			$api->getPlayerEloHistory(2, '3v3');
+		}));
+	}
+
+	/**
+	 * Ranking rows are numbered and named; statistics follow the period; an unknown period is a 400.
+	 *
+	 * @return void
+	 */
+	public function testRankingAndStats()
+	{
+		$api = $this->apiAs(array('read', 'create'));
+		$api->postGame($this->validGameData());
+
+		$ranking = $api->getRanking(BabyfootConfig::MODE_ALL, '30');
+		$this->assertNotEmpty($ranking);
+		$this->assertSame(range(1, count($ranking)), array_column($ranking, 'rank'));
+		$this->assertNotSame('', $ranking[0]['name']);
+
+		$stats = $api->getStats('30');
+		$this->assertGreaterThanOrEqual(1, $stats['totals']['nb_games']);
+		$this->assertCount(7, $stats['by_weekday']);
+		$this->assertCount(24, $stats['by_hour']);
+		$this->assertNotNull($stats['most_active_player']);
+
+		$this->assertSame(400, $this->codeOf(function () use ($api) {
+			$api->getStats('7');
+		}));
+		$this->assertSame(400, $this->codeOf(function () use ($api) {
+			$api->getRanking(BabyfootConfig::MODE_ALL, 'week');
+		}));
+	}
 }

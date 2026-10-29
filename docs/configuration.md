@@ -94,6 +94,13 @@ restreinte, l'Elo affiché reste l'Elo courant, complété par la variation sur 
 En cas d'égalité stricte d'Elo, les joueurs sont départagés par ratio de victoires, puis par
 différence de buts, puis par nombre de parties.
 
+### Consulter les statistiques
+
+**Outils > Babyfoot > Statistiques** propose le même filtre de période que le classement. Totaux,
+meilleurs duos, parties serrées ou larges, fannys et répartitions horaires ne portent alors que sur
+les parties de la période. Sans période, le joueur le plus actif reste celui des 30 derniers jours ;
+avec une période, c'est celui de la période.
+
 ### Corriger une partie
 
 Modifier, annuler ou supprimer une partie exige le droit **Modifier toute partie**. Ni le fait
@@ -114,10 +121,22 @@ dont les droits Babyfoot s'appliquent.
 
 | Méthode | Chemin | Droit | Rôle |
 |---|---|---|---|
-| `GET` | `/babyfoot/games` | `read` | Liste filtrable : `mode`, `status`, `fk_user`, `date_start`, `date_end`, `sqlfilters` |
-| `GET` | `/babyfoot/games/{id}` | `read` | Une partie, ses joueurs et leur variation d'Elo |
+| `GET` | `/babyfoot/me` | aucun | Utilisateur connecté, ses droits Babyfoot, version du module, score maximum |
+| `GET` | `/babyfoot/games` | `read` | Liste filtrable : `mode`, `status`, `fk_user`, `date_start`, `date_end`, `search`, `sqlfilters` |
+| `GET` | `/babyfoot/games/{id}` | `read` | Une partie, ses joueurs (avec leur nom) et leur variation d'Elo |
 | `POST` | `/babyfoot/games` | `create` | Enregistre une partie, renvoie son identifiant |
 | `PUT` | `/babyfoot/games/{id}` | `modify_all` | Corrige les scores, la date ou les joueurs |
+| `POST` | `/babyfoot/games/{id}/cancel` | `modify_all` | Annule une partie : elle reste dans l'historique mais ne compte plus |
+| `POST` | `/babyfoot/games/{id}/reopen` | `modify_all` | Réactive une partie annulée |
+| `DELETE` | `/babyfoot/games/{id}` | `modify_all` | Supprime définitivement une partie |
+| `GET` | `/babyfoot/players` | `read` | Utilisateurs actifs internes, y compris ceux qui n'ont jamais joué (`elo` vide) |
+| `GET` | `/babyfoot/players/{id}` | `read` | Fiche joueur : Elo par mode, coéquipier, bête noire, victime, dernières parties |
+| `GET` | `/babyfoot/players/{id}/elo-history` | `read` | Courbe d'Elo, paramètre `mode` (`all` par défaut) |
+| `GET` | `/babyfoot/ranking` | `read` | Classement, paramètres `mode` et `period` |
+| `GET` | `/babyfoot/stats` | `read` | Statistiques collectives, paramètre `period` |
+
+`search` cherche dans la référence de la partie et dans le nom, le prénom ou le login de ses
+joueurs. `period` vaut `30`, `90`, `365` (jours) ou `all` ; toute autre valeur est refusée.
 
 Un joueur se désigne par son identifiant ou par son login ; l'identifiant l'emporte si les deux
 sont fournis. Les dates sont des timestamps ; sans `date_game`, la partie est datée de l'instant
@@ -140,7 +159,8 @@ de l'appel.
 Le camp `1` est le bleu, le camp `2` le rouge. En `PUT`, seuls les champs envoyés changent, et
 fournir `players` remplace tous les joueurs. Les règles sont les mêmes qu'à l'écran : une partie
 refusée renvoie une erreur 400 qui liste les règles enfreintes, et toute correction relance le
-recalcul complet du classement.
+recalcul complet du classement. Annuler une partie déjà annulée, ou réactiver une partie qui ne
+l'est pas, renvoie une erreur 400.
 
 ## Administration
 

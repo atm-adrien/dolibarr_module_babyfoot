@@ -4,8 +4,14 @@
 
 - NEW : le module n'a plus d'entrée dans le bandeau du haut ; il est rangé dans le menu
   latéral **Outils > Babyfoot**. Désactiver puis réactiver le module pour reconstruire le menu.
-- NEW : API REST `/babyfoot/games` en `GET`, `POST` et `PUT` pour lister, lire, créer et
-  corriger des parties depuis un outil tiers. Joueurs désignés par `fk_user` ou par `login`.
+- NEW : API REST sous `/babyfoot` : `me`, parties (`GET`, `POST`, `PUT`, `DELETE`, `cancel`,
+  `reopen`, recherche par nom de joueur), joueurs (liste incluant ceux qui n'ont jamais joué,
+  fiche, courbe d'Elo), classement et statistiques par période. Joueurs désignés par `fk_user`
+  ou par `login` ; les parties renvoient le nom de leurs joueurs, chargées en trois requêtes
+  quel que soit leur nombre.
+- NEW : filtre de période (30 jours, 90 jours, 1 an, tout) sur l'écran Statistiques ; les
+  méthodes de `GlobalStatsRepository` acceptent une période.
+- FIX : la période choisie n'était jamais mise en évidence dans le sélecteur du classement.
 - NEW : après l'enregistrement d'une partie, la saisie rapide garde les joueurs et ne vide
   que les scores.
 - NEW : bouton d'inversion des camps bleu et rouge sur la saisie rapide.

@@ -1,8 +1,8 @@
 <?php
 /**
  * \file       tests/e2e/fixtures/setup.php
- * \brief      e2e dataset: four players and a non admin runner holding the babyfoot rights.
- *             Prints the ids and the runner credentials as JSON on stdout.
+ * \brief      e2e dataset: four players and a non admin runner holding every babyfoot right
+ *             and an API key. Prints the ids and the runner credentials as JSON on stdout.
  */
 require_once dirname(__FILE__).'/bootstrap.php';
 
@@ -48,6 +48,12 @@ if ($runner->addrights(0, 'babyfoot') < 0) {
 	fwrite(STDERR, "rights grant failed: ".$runner->error."\n");
 	exit(1);
 }
+$apiKey = bin2hex(random_bytes(16));
+$runner->api_key = $apiKey;
+if ($runner->update($user) < 0) {
+	fwrite(STDERR, "api key failed: ".$runner->error."\n");
+	exit(1);
+}
 
 $players = array();
 for ($i = 1; $i <= 4; $i++) {
@@ -57,5 +63,7 @@ for ($i = 1; $i <= 4; $i++) {
 echo json_encode(array(
 	'login' => $runner->login,
 	'password' => $password,
+	'api_key' => $apiKey,
+	'runner_id' => $runnerId,
 	'players' => $players,
 )), "\n";

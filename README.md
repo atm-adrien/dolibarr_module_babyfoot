@@ -41,10 +41,10 @@ réinitialise aucun paramétrage** : la réactivation retrouve l'existant intact
 | Liste des joueurs | Annuaire trié par nom, colonnes triables, lien vers la fiche |
 | Classement | Elo par mode, avec filtre de période |
 | Fiche joueur | Compteurs, courbe d'Elo, confrontations, dernières parties |
-| Statistiques | Totaux, duos, fannys, répartition horaire et hebdomadaire |
+| Statistiques | Totaux, duos, fannys, répartition horaire et hebdomadaire, filtre de période |
 | Widget | Top 5, rang personnel, trois dernières parties |
 | Configuration | Les trois paramètres, recalcul et vérification de cohérence |
-| API REST | Lister, lire, créer et corriger des parties depuis un outil tiers |
+| API REST | Parties, joueurs, classement et statistiques depuis un outil tiers |
 
 Tous les écrans sont accessibles depuis **Outils > Babyfoot** dans le menu latéral.
 
@@ -76,9 +76,15 @@ Documentation du module.
 ## API REST
 
 Nécessite le module **API REST** de Dolibarr. Points d'entrée sous `/api/index.php/babyfoot` :
-`GET /games`, `GET /games/{id}`, `POST /games`, `PUT /games/{id}`, soumis respectivement aux
-droits `read`, `read`, `create` et `modify_all`. Les joueurs se désignent par `fk_user` ou par
-`login`. Le détail et un exemple figurent dans l'onglet Documentation du module.
+
+- `GET /me` — utilisateur connecté, droits Babyfoot, version, score maximum ;
+- `GET|POST /games`, `GET|PUT|DELETE /games/{id}`, `POST /games/{id}/cancel|reopen` ;
+- `GET /players`, `GET /players/{id}`, `GET /players/{id}/elo-history` ;
+- `GET /ranking`, `GET /stats` (paramètre `period` : `30`, `90`, `365` ou `all`).
+
+Lecture : droit `read` ; création : `create` ; correction, annulation, suppression :
+`modify_all`. Les joueurs se désignent par `fk_user` ou par `login`. Le détail et un exemple
+figurent dans l'onglet Documentation du module.
 
 ## Recalcul du classement
 
@@ -104,7 +110,7 @@ cd htdocs/custom/babyfoot
 phpunit -c <dolibarr>/test/phpunit/phpunittest.xml test/phpunit/
 ```
 
-79 tests, 247 assertions. Les tests s'exécutent dans une transaction annulée à la fin :
+90 tests, 308 assertions. Les tests s'exécutent dans une transaction annulée à la fin :
 ils ne laissent aucune donnée derrière eux.
 
 Tests de bout en bout (Playwright), **sur une instance de test uniquement** : ils créent des

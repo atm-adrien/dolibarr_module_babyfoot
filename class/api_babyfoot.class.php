@@ -18,10 +18,10 @@
 /**
  * \file    class/api_babyfoot.class.php
  * \ingroup babyfoot
- * \brief   REST API of the babyfoot module: list, read, record and correct games.
+ * \brief   REST API of the babyfoot module: games, players, ranking and statistics.
  *
- * The API is another caller of Game, GameValidator and RatingEngine: it never
- * implements a business rule of its own.
+ * The API is another caller of Game, GameValidator, RatingEngine and the stats
+ * repositories: it never implements a business rule of its own.
  */
 
 use Luracast\Restler\RestException;
@@ -30,6 +30,10 @@ require_once DOL_DOCUMENT_ROOT.'/api/class/api.class.php';
 require_once DOL_DOCUMENT_ROOT.'/user/class/user.class.php';
 require_once dirname(__FILE__).'/babyfootconfig.class.php';
 require_once dirname(__FILE__).'/game.class.php';
+require_once dirname(__FILE__).'/stats/gamerepository.class.php';
+require_once dirname(__FILE__).'/stats/rankingrepository.class.php';
+require_once dirname(__FILE__).'/stats/playerstatsrepository.class.php';
+require_once dirname(__FILE__).'/stats/globalstatsrepository.class.php';
 
 /**
  * REST API of the babyfoot module, served under /babyfoot.
@@ -39,6 +43,18 @@ require_once dirname(__FILE__).'/game.class.php';
  */
 class Babyfoot extends DolibarrApi
 {
+	/** @var string[] Permissions of the module, as exposed by GET /me */
+	const RIGHTS = array('read', 'create', 'modify_all', 'admin');
+
+	/** @var int Games returned in the last games of a player card */
+	const PLAYER_LAST_GAMES = 10;
+
+	/** @var int Rows returned by the duo and game gap tables of the statistics */
+	const STATS_TOP_DUOS = 10;
+
+	/** @var int Rows returned by the tightest and widest games tables */
+	const STATS_GAP_GAMES = 5;
+
 	/**
 	 * Constructor
 	 */
@@ -50,7 +66,44 @@ class Babyfoot extends DolibarrApi
 	}
 
 	/**
-	 * List games
+	 * Get the connected user, their babyfoot permissions and the module constants
+	 *
+	 * Needs no permission: a key restricted to the module cannot call /users/info.
+	 *
+	 * @return	array<string,mixed>	User, permissions and module information
+	 *
+	 * @url GET /me
+	 */
+	public function getMe()
+	{
+		require_once dirname(__FILE__).'/../core/modules/modBabyfoot.class.php';
+
+		$apiUser = DolibarrApiAccess::$user;
+		$rights = array();
+		foreach (self::RIGHTS as $right) {
+			$rights[$right] = (bool) $apiUser->hasRight('babyfoot', $right);
+		}
+		$descriptor = new modBabyfoot($this->db);
+		$config = BabyfootConfig::resolve();
+
+		return array(
+			'id' => (int) $apiUser->id,
+			'login' => (string) $apiUser->login,
+			'firstname' => (string) $apiUser->firstname,
+			'lastname' => (string) $apiUser->lastname,
+			'name' => (string) dolGetFirstLastname((string) $apiUser->firstname, (string) $apiUser->lastname),
+			'rights' => $rights,
+			'module_version' => (string) $descriptor->version,
+			'score_max' => BabyfootConfig::SCORE_MAX,
+			'game_modes' => BabyfootConfig::gameModes(),
+			'rating_modes' => BabyfootConfig::ratingModes(),
+			'periods' => BabyfootConfig::periods(),
+			'default_mode' => $config['default_mode'],
+		);
+	}
+
+	/**
+	 * List games, with their players and the players names
 	 *
 	 * @param	string	$sortfield	Sort field
 	 * @param	string	$sortorder	Sort order
@@ -61,6 +114,7 @@ class Babyfoot extends DolibarrApi
 	 * @param	int		$fk_user	Only the games this user played
 	 * @param	int		$date_start	Only the games played at or after this timestamp
 	 * @param	int		$date_end	Only the games played at or before this timestamp
+	 * @param	string	$search		Text searched in the game ref and in the name or login of its players
 	 * @param	string	$sqlfilters	Other criteria to filter answers separated by a comma. Syntax example "(t.ref:like:'BF2610-%')"
 	 * @return	array<int,array<string,mixed>>	List of games
 	 *
@@ -70,70 +124,40 @@ class Babyfoot extends DolibarrApi
 	 * @throws	RestException	403 Access denied
 	 * @throws	RestException	503 Database error
 	 */
-	public function listGames($sortfield = 't.date_game', $sortorder = 'DESC', $limit = 100, $page = 0, $mode = '', $status = -1, $fk_user = 0, $date_start = 0, $date_end = 0, $sqlfilters = '')
+	public function listGames($sortfield = 't.date_game', $sortorder = 'DESC', $limit = 100, $page = 0, $mode = '', $status = -1, $fk_user = 0, $date_start = 0, $date_end = 0, $search = '', $sqlfilters = '')
 	{
-		if (!DolibarrApiAccess::$user->hasRight('babyfoot', 'read')) {
-			throw new RestException(403);
+		$this->requireRight('read');
+		if ($mode !== '' && !in_array($mode, BabyfootConfig::gameModes(), true)) {
+			throw new RestException(400, 'Unknown mode '.$mode);
 		}
 
-		$sql = "SELECT t.rowid";
-		$sql .= " FROM ".$this->db->prefix()."babyfoot_game AS t";
-		$sql .= " WHERE t.entity IN (".getEntity('babyfootgame').")";
-		if ($mode !== '') {
-			if (!in_array($mode, BabyfootConfig::gameModes(), true)) {
-				throw new RestException(400, 'Unknown mode '.$mode);
-			}
-			$sql .= " AND t.mode = '".$this->db->escape($mode)."'";
-		}
-		if ((int) $status >= 0) {
-			$sql .= " AND t.status = ".((int) $status);
-		}
-		if ((int) $fk_user > 0) {
-			$sql .= " AND EXISTS (SELECT gp.rowid FROM ".$this->db->prefix()."babyfoot_game_player AS gp";
-			$sql .= " WHERE gp.fk_game = t.rowid AND gp.fk_user = ".((int) $fk_user).")";
-		}
-		if ((int) $date_start > 0) {
-			$sql .= " AND t.date_game >= '".$this->db->idate((int) $date_start)."'";
-		}
-		if ((int) $date_end > 0) {
-			$sql .= " AND t.date_game <= '".$this->db->idate((int) $date_end)."'";
-		}
+		$extraSql = '';
 		if ($sqlfilters) {
 			$errormessage = '';
-			$sql .= forgeSQLFromUniversalSearchCriteria($sqlfilters, $errormessage);
+			$extraSql = forgeSQLFromUniversalSearchCriteria($sqlfilters, $errormessage);
 			if ($errormessage) {
 				throw new RestException(400, 'Error when validating parameter sqlfilters -> '.$errormessage);
 			}
 		}
 
-		$sql .= $this->db->order($sortfield, $sortorder);
-		if ($limit) {
-			$page = max(0, (int) $page);
-			$sql .= $this->db->plimit((int) $limit, (int) $limit * $page);
-		}
+		$filters = array(
+			'mode' => $mode,
+			'status' => (int) $status,
+			'fk_user' => (int) $fk_user,
+			'date_start' => (int) $date_start,
+			'date_end' => (int) $date_end,
+			'search' => (string) $search,
+		);
 
-		$resql = $this->db->query($sql);
-		if (!$resql) {
-			dol_syslog('Babyfoot::listGames '.$this->db->lasterror(), LOG_ERR);
+		try {
+			return $this->gameRepository()->search($filters, (string) $sortfield, (string) $sortorder, (int) $limit, (int) $page, $extraSql);
+		} catch (Exception $e) {
 			throw new RestException(503, 'Error when retrieving the game list');
 		}
-
-		$ids = array();
-		while ($obj = $this->db->fetch_object($resql)) {
-			$ids[] = (int) $obj->rowid;
-		}
-		$this->db->free($resql);
-
-		$result = array();
-		foreach ($ids as $id) {
-			$result[] = $this->formatGame($this->fetchGameOrFail($id));
-		}
-
-		return $result;
 	}
 
 	/**
-	 * Get a game with its players and their Elo changes
+	 * Get a game with its players, their names and their Elo changes
 	 *
 	 * @param	int		$id		Id of the game
 	 * @return	array<string,mixed>	Game
@@ -142,14 +166,13 @@ class Babyfoot extends DolibarrApi
 	 *
 	 * @throws	RestException	403 Access denied
 	 * @throws	RestException	404 Game not found
+	 * @throws	RestException	503 Database error
 	 */
 	public function getGame($id)
 	{
-		if (!DolibarrApiAccess::$user->hasRight('babyfoot', 'read')) {
-			throw new RestException(403);
-		}
+		$this->requireRight('read');
 
-		return $this->formatGame($this->fetchGameOrFail((int) $id));
+		return $this->readGameOrFail((int) $id);
 	}
 
 	/**
@@ -169,9 +192,7 @@ class Babyfoot extends DolibarrApi
 	 */
 	public function postGame($request_data = null)
 	{
-		if (!DolibarrApiAccess::$user->hasRight('babyfoot', 'create')) {
-			throw new RestException(403);
-		}
+		$this->requireRight('create');
 		if (!is_array($request_data)) {
 			throw new RestException(400, 'Missing request data');
 		}
@@ -210,9 +231,7 @@ class Babyfoot extends DolibarrApi
 	 */
 	public function putGame($id, $request_data = null)
 	{
-		if (!DolibarrApiAccess::$user->hasRight('babyfoot', 'modify_all')) {
-			throw new RestException(403);
-		}
+		$this->requireRight('modify_all');
 		if (!is_array($request_data)) {
 			throw new RestException(400, 'Missing request data');
 		}
@@ -236,11 +255,405 @@ class Babyfoot extends DolibarrApi
 			$this->failOnGameError($game);
 		}
 
-		return $this->formatGame($this->fetchGameOrFail((int) $id));
+		return $this->readGameOrFail((int) $id);
 	}
 
 	/**
-	 * Load a game of a visible entity with its players.
+	 * Cancel a game: it stays in the history but no longer counts
+	 *
+	 * @param	int		$id		Id of the game
+	 * @return	array<string,mixed>	Cancelled game
+	 *
+	 * @url POST /games/{id}/cancel
+	 *
+	 * @throws	RestException	400 Game already cancelled
+	 * @throws	RestException	403 Access denied
+	 * @throws	RestException	404 Game not found
+	 * @throws	RestException	500 Error while saving
+	 */
+	public function cancelGame($id)
+	{
+		$this->requireRight('modify_all');
+
+		$game = $this->fetchGameOrFail((int) $id);
+		if ((int) $game->status !== Game::STATUS_VALIDATED) {
+			throw new RestException(400, 'Game is already cancelled');
+		}
+		if ($game->cancel(DolibarrApiAccess::$user) <= 0) {
+			$this->failOnGameError($game);
+		}
+
+		return $this->readGameOrFail((int) $id);
+	}
+
+	/**
+	 * Reopen a cancelled game: it counts again
+	 *
+	 * @param	int		$id		Id of the game
+	 * @return	array<string,mixed>	Reopened game
+	 *
+	 * @url POST /games/{id}/reopen
+	 *
+	 * @throws	RestException	400 Game is not cancelled
+	 * @throws	RestException	403 Access denied
+	 * @throws	RestException	404 Game not found
+	 * @throws	RestException	500 Error while saving
+	 */
+	public function reopenGame($id)
+	{
+		$this->requireRight('modify_all');
+
+		$game = $this->fetchGameOrFail((int) $id);
+		if ((int) $game->status !== Game::STATUS_CANCELED) {
+			throw new RestException(400, 'Game is not cancelled');
+		}
+		if ($game->reopen(DolibarrApiAccess::$user) <= 0) {
+			$this->failOnGameError($game);
+		}
+
+		return $this->readGameOrFail((int) $id);
+	}
+
+	/**
+	 * Delete a game for good
+	 *
+	 * @param	int		$id		Id of the game
+	 * @return	array<string,array<string,mixed>>	Success message
+	 *
+	 * @url DELETE /games/{id}
+	 *
+	 * @throws	RestException	403 Access denied
+	 * @throws	RestException	404 Game not found
+	 * @throws	RestException	500 Error while deleting
+	 */
+	public function deleteGame($id)
+	{
+		$this->requireRight('modify_all');
+
+		$game = $this->fetchGameOrFail((int) $id);
+		if ($game->delete(DolibarrApiAccess::$user) <= 0) {
+			$this->failOnGameError($game);
+		}
+
+		return array('success' => array('code' => 200, 'message' => 'Game '.$game->ref.' deleted'));
+	}
+
+	/**
+	 * List the players: every active internal user, including those who never played
+	 *
+	 * elo is null for a user who never played.
+	 *
+	 * @return	array<int,array<string,mixed>>	Players sorted by name
+	 *
+	 * @url GET /players
+	 *
+	 * @throws	RestException	403 Access denied
+	 * @throws	RestException	503 Database error
+	 */
+	public function listPlayers()
+	{
+		$this->requireRight('read');
+
+		try {
+			$rows = $this->rankingRepository()->getActiveInternalPlayers(getEntity('user'));
+		} catch (Exception $e) {
+			throw new RestException(503, 'Error when retrieving the players');
+		}
+
+		foreach ($rows as $index => $row) {
+			$rows[$index]['name'] = (string) dolGetFirstLastname($row['firstname'], $row['lastname']);
+		}
+
+		return $rows;
+	}
+
+	/**
+	 * Get a player card: ratings per mode, teammates and opponents, last games
+	 *
+	 * @param	int		$id		Id of the Dolibarr user
+	 * @return	array<string,mixed>	Player card
+	 *
+	 * @url GET /players/{id}
+	 *
+	 * @throws	RestException	403 Access denied
+	 * @throws	RestException	404 Player not found
+	 * @throws	RestException	503 Database error
+	 */
+	public function getPlayer($id)
+	{
+		$this->requireRight('read');
+
+		$id = (int) $id;
+		$stats = new PlayerStatsRepository($this->db, $this->entity());
+		$ratings = $stats->getRatings($id);
+		$this->requirePlayer($id, $ratings);
+
+		$relations = array(
+			'best_teammate' => $stats->getBestTeammate($id),
+			'nemesis' => $stats->getNemesis($id),
+			'favourite_victim' => $stats->getFavouriteVictim($id),
+		);
+
+		$userIds = array($id);
+		foreach ($relations as $relation) {
+			if (!is_null($relation)) {
+				$userIds[] = (int) $relation['fk_user'];
+			}
+		}
+		$labels = $this->playerLabels($userIds);
+
+		$card = array(
+			'player' => $labels[$id],
+			'ratings' => (object) $ratings,
+		);
+		foreach ($relations as $key => $relation) {
+			$card[$key] = is_null($relation) ? null : array_merge($labels[(int) $relation['fk_user']], $relation);
+		}
+		$card['last_games'] = $stats->getLastGames($id, self::PLAYER_LAST_GAMES);
+
+		return $card;
+	}
+
+	/**
+	 * Get the Elo history of a player, one point per game, oldest first
+	 *
+	 * @param	int		$id		Id of the Dolibarr user
+	 * @param	string	$mode	'1v1', '2v2' or 'all'
+	 * @return	array<int,array{date:int,elo:int}>	Elo after each game
+	 *
+	 * @url GET /players/{id}/elo-history
+	 *
+	 * @throws	RestException	400 Unknown mode
+	 * @throws	RestException	403 Access denied
+	 * @throws	RestException	404 Player not found
+	 */
+	public function getPlayerEloHistory($id, $mode = 'all')
+	{
+		$this->requireRight('read');
+		if (!in_array($mode, BabyfootConfig::ratingModes(), true)) {
+			throw new RestException(400, 'Unknown mode '.$mode);
+		}
+
+		$id = (int) $id;
+		$stats = new PlayerStatsRepository($this->db, $this->entity());
+		$this->requirePlayer($id, $stats->getRatings($id));
+
+		return $stats->getEloHistory($id, (string) $mode);
+	}
+
+	/**
+	 * Get the ranking of one mode
+	 *
+	 * With a period, the counters cover the period while elo stays the current
+	 * one, elo_variation giving its change over the period.
+	 *
+	 * @param	string	$mode		'1v1', '2v2' or 'all'
+	 * @param	string	$period		'30', '90', '365' (days) or 'all'
+	 * @return	array<int,array<string,mixed>>	Ranked players, best first
+	 *
+	 * @url GET /ranking
+	 *
+	 * @throws	RestException	400 Unknown mode or period
+	 * @throws	RestException	403 Access denied
+	 * @throws	RestException	503 Database error
+	 */
+	public function getRanking($mode = 'all', $period = 'all')
+	{
+		$this->requireRight('read');
+		if (!in_array($mode, BabyfootConfig::ratingModes(), true)) {
+			throw new RestException(400, 'Unknown mode '.$mode);
+		}
+		$dateFrom = $this->periodStartOrFail((string) $period);
+
+		$repository = $this->rankingRepository();
+		$ranking = $repository->getRanking((string) $mode, 0, $dateFrom, 0);
+		$variations = $repository->getRankVariationSinceLastGame((string) $mode, $ranking);
+
+		// Decision D11: the streak shown is always the overall one, whatever the mode
+		$overallStreaks = array();
+		if ($mode !== BabyfootConfig::MODE_ALL) {
+			foreach ($repository->getRanking(BabyfootConfig::MODE_ALL, 0, 0, 0) as $row) {
+				$overallStreaks[(int) $row['fk_user']] = (int) $row['current_streak'];
+			}
+		}
+
+		$labels = $this->playerLabels(array_column($ranking, 'fk_user'));
+
+		$result = array();
+		foreach ($ranking as $position => $row) {
+			$userId = (int) $row['fk_user'];
+			if (isset($overallStreaks[$userId])) {
+				$row['current_streak'] = $overallStreaks[$userId];
+			}
+			$result[] = array_merge(
+				array('rank' => $position + 1, 'rank_variation' => isset($variations[$userId]) ? (int) $variations[$userId] : 0),
+				$labels[$userId],
+				$row
+			);
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Get the collective statistics
+	 *
+	 * Without a period, most_active_player covers the last 30 days.
+	 *
+	 * @param	string	$period		'30', '90', '365' (days) or 'all'
+	 * @return	array<string,mixed>	Statistics
+	 *
+	 * @url GET /stats
+	 *
+	 * @throws	RestException	400 Unknown period
+	 * @throws	RestException	403 Access denied
+	 * @throws	RestException	503 Database error
+	 */
+	public function getStats($period = 'all')
+	{
+		$this->requireRight('read');
+		$dateFrom = $this->periodStartOrFail((string) $period);
+
+		$repository = new GlobalStatsRepository($this->db, $this->entity());
+		$mostActiveFrom = ($dateFrom > 0) ? $dateFrom : (dol_now() - BabyfootConfig::MOST_ACTIVE_DEFAULT_DAYS * 24 * 3600);
+		$mostActive = $repository->getMostActivePlayer($mostActiveFrom);
+		$duos = $repository->getTopDuos(self::STATS_TOP_DUOS, $dateFrom);
+		$fannies = $repository->getFannyTable($dateFrom);
+
+		$userIds = array_merge(array_column($duos, 'user1'), array_column($duos, 'user2'), array_column($fannies, 'fk_user'));
+		if (!is_null($mostActive)) {
+			$userIds[] = (int) $mostActive['fk_user'];
+		}
+		$labels = $this->playerLabels($userIds);
+
+		foreach ($duos as $index => $duo) {
+			$duos[$index]['player1'] = $labels[(int) $duo['user1']];
+			$duos[$index]['player2'] = $labels[(int) $duo['user2']];
+		}
+		foreach ($fannies as $index => $fanny) {
+			$fannies[$index] = array_merge($labels[(int) $fanny['fk_user']], $fanny);
+		}
+
+		$byWeekday = array();
+		foreach ($repository->getDistributionByWeekday($dateFrom) as $weekday => $nb) {
+			$byWeekday[] = array('weekday' => (int) $weekday, 'nb' => (int) $nb);
+		}
+		$byHour = array();
+		foreach ($repository->getDistributionByHour($dateFrom) as $hour => $nb) {
+			$byHour[] = array('hour' => (int) $hour, 'nb' => (int) $nb);
+		}
+
+		return array(
+			'period' => (string) $period,
+			'date_start' => $dateFrom,
+			'totals' => $repository->getTotals($dateFrom),
+			'most_active_player' => is_null($mostActive) ? null : array_merge($labels[(int) $mostActive['fk_user']], $mostActive),
+			'most_active_since' => $mostActiveFrom,
+			'top_duos' => $duos,
+			'tightest_games' => $repository->getTightestGames(self::STATS_GAP_GAMES, $dateFrom),
+			'widest_games' => $repository->getWidestGames(self::STATS_GAP_GAMES, $dateFrom),
+			'fannies' => $fannies,
+			'by_weekday' => $byWeekday,
+			'by_hour' => $byHour,
+		);
+	}
+
+	/**
+	 * Refuse the call when the API user lacks a babyfoot permission.
+	 *
+	 * @param	string	$right	Permission code
+	 * @return	void
+	 *
+	 * @throws	RestException	403 Access denied
+	 */
+	private function requireRight(string $right): void
+	{
+		if (!DolibarrApiAccess::$user->hasRight('babyfoot', $right)) {
+			throw new RestException(403);
+		}
+	}
+
+	/**
+	 * Refuse an id that is neither a user of the visible entities nor a ranked player.
+	 *
+	 * A deleted user keeps their card as long as their games count in the ranking.
+	 *
+	 * @param	int		$id			Id of the Dolibarr user
+	 * @param	array	$ratings	Ranking rows of the player
+	 * @return	void
+	 *
+	 * @throws	RestException	404 Player not found
+	 */
+	private function requirePlayer(int $id, array $ratings): void
+	{
+		if (!empty($ratings)) {
+			return;
+		}
+		$player = new User($this->db);
+		if ($id <= 0 || $player->fetch($id) <= 0) {
+			throw new RestException(404, 'Player not found');
+		}
+	}
+
+	/**
+	 * Resolve a period code into its start timestamp.
+	 *
+	 * @param	string	$period		Period code
+	 * @return	int					Start timestamp, 0 for the whole history
+	 *
+	 * @throws	RestException	400 Unknown period
+	 */
+	private function periodStartOrFail(string $period): int
+	{
+		if (!in_array($period, BabyfootConfig::periods(), true)) {
+			throw new RestException(400, 'Unknown period '.$period.', expected one of '.implode(', ', BabyfootConfig::periods()));
+		}
+
+		return BabyfootConfig::periodStart($period);
+	}
+
+	/**
+	 * Resolve player labels, mapping a database error to a 503.
+	 *
+	 * @param	int[]	$userIds	User ids
+	 * @return	array<int,array<string,mixed>>	Labels indexed by user id
+	 *
+	 * @throws	RestException	503 Database error
+	 */
+	private function playerLabels(array $userIds): array
+	{
+		try {
+			return $this->gameRepository()->getPlayerLabels($userIds);
+		} catch (Exception $e) {
+			throw new RestException(503, 'Error when retrieving the player names');
+		}
+	}
+
+	/**
+	 * Read one game through the repository, with player names.
+	 *
+	 * @param	int		$id		Id of the game
+	 * @return	array<string,mixed>	Game
+	 *
+	 * @throws	RestException	404 Game not found
+	 * @throws	RestException	503 Database error
+	 */
+	private function readGameOrFail(int $id): array
+	{
+		try {
+			$games = $this->gameRepository()->getByIds(array($id));
+		} catch (Exception $e) {
+			throw new RestException(503, 'Error when retrieving the game');
+		}
+		if (empty($games)) {
+			throw new RestException(404, 'Game not found');
+		}
+
+		return $games[0];
+	}
+
+	/**
+	 * Load a game of a visible entity with its players, for a write.
 	 *
 	 * @param	int		$id		Id of the game
 	 * @return	Game			Loaded game
@@ -255,7 +668,7 @@ class Babyfoot extends DolibarrApi
 		if ($result < 0) {
 			throw new RestException(503, 'Error when retrieving the game');
 		}
-		if ($result === 0 || !in_array((int) $game->entity, explode(',', getEntity('babyfootgame')))) {
+		if ($result === 0 || !in_array((int) $game->entity, array_map('intval', explode(',', getEntity('babyfootgame'))), true)) {
 			throw new RestException(404, 'Game not found');
 		}
 		if ($game->fetchLines() < 0) {
@@ -272,6 +685,7 @@ class Babyfoot extends DolibarrApi
 	 * @return	array<int,array{fk_user:int,team:int}>	Resolved players
 	 *
 	 * @throws	RestException	400 Invalid player
+	 * @throws	RestException	503 Database error
 	 */
 	private function resolvePlayers($players): array
 	{
@@ -312,7 +726,7 @@ class Babyfoot extends DolibarrApi
 	}
 
 	/**
-	 * Raise the exception matching the failure of Game::create() or Game::update().
+	 * Raise the exception matching the failure of a write on a game.
 	 *
 	 * @param	Game	$game	Game that failed to save
 	 * @return	never
@@ -338,42 +752,28 @@ class Babyfoot extends DolibarrApi
 	}
 
 	/**
-	 * Expose a game as a plain array, without the internals of CommonObject.
-	 *
-	 * @param	Game	$game	Loaded game with its players
-	 * @return	array<string,mixed>	Game data
+	 * @return	int		Entity the statistics are computed on
 	 */
-	private function formatGame(Game $game): array
+	private function entity(): int
 	{
-		$players = array();
-		if (is_array($game->lines) && !empty($game->lines)) {
-			foreach ($game->lines as $line) {
-				$players[] = array(
-					'fk_user' => (int) $line->fk_user,
-					'team' => (int) $line->team,
-					'is_winner' => (int) $line->is_winner,
-					'elo_before' => (int) $line->elo_before,
-					'elo_after' => (int) $line->elo_after,
-					'elo_delta' => (int) $line->elo_delta,
-					'elo_all_before' => (int) $line->elo_all_before,
-					'elo_all_after' => (int) $line->elo_all_after,
-					'elo_all_delta' => (int) $line->elo_all_delta,
-				);
-			}
-		}
+		global $conf;
 
-		return array(
-			'id' => (int) $game->id,
-			'ref' => (string) $game->ref,
-			'date_game' => (int) $game->date_game,
-			'mode' => (string) $game->mode,
-			'score_team1' => (int) $game->score_team1,
-			'score_team2' => (int) $game->score_team2,
-			'winner_team' => ($game->winner_team === null || $game->winner_team === '') ? null : (int) $game->winner_team,
-			'status' => (int) $game->status,
-			'fk_user_creat' => (int) $game->fk_user_creat,
-			'date_creation' => (int) $game->date_creation,
-			'players' => $players,
-		);
+		return (int) $conf->entity;
+	}
+
+	/**
+	 * @return	GameRepository	Game reader on the visible entities
+	 */
+	private function gameRepository(): GameRepository
+	{
+		return new GameRepository($this->db, getEntity('babyfootgame'));
+	}
+
+	/**
+	 * @return	RankingRepository	Ranking reader on the current entity
+	 */
+	private function rankingRepository(): RankingRepository
+	{
+		return new RankingRepository($this->db, $this->entity());
 	}
 }
