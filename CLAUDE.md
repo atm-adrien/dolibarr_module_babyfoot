@@ -46,6 +46,9 @@ docs/configuration.md          source de l'onglet documentation en ligne
 cd /home/client/standard/demo22/dolibarr/htdocs/custom/babyfoot
 /home/atm-adrien/bin/phpunit -c /home/client/standard/demo22/dolibarr/test/phpunit/phpunittest.xml test/phpunit/
 
+# Tests E2E Playwright (instance jetable uniquement : écrit en base, active le module si besoin)
+npm i && E2E_ALLOW_FIXTURES=1 E2E_ENTITY=<entity> BASE_URL=<url htdocs/> npx playwright test
+
 # Recalcul complet du classement en CLI
 php scripts/recompute_ratings.php <entity>
 ```
@@ -107,6 +110,9 @@ un tableau résolu, jamais `$conf`.
 - **Pas de menu dans le bandeau du haut** : tout est sous `fk_mainmenu=tools`, `mainmenu => 'tools'`.
   Les menus ne sont écrits en base qu'à l'activation : toute modification impose un cycle
   désactivation/réactivation pour être visible.
+- **E2E : les comptes de test portent le préfixe `e2ebabyfoot_`**, c'est par lui que
+  `tests/e2e/fixtures/teardown.php` supprime parties et comptes. Avec Multicompany, le login
+  choisit l'entité `E2E_ENTITY` dans le formulaire : sans cela la session tombe dans une autre entité.
 - **La classe d'API s'appelle `Babyfoot`, pas `BabyfootApi`.** `api/index.php` déduit le nom de
   classe du premier segment d'URL : c'est ce qui sert les routes sous `/babyfoot/...`.
   Dans un test PHPUnit, renseigner `DolibarrApiAccess::$user` avant d'appeler une méthode.

@@ -107,6 +107,14 @@ phpunit -c <dolibarr>/test/phpunit/phpunittest.xml test/phpunit/
 79 tests, 247 assertions. Les tests s'exécutent dans une transaction annulée à la fin :
 ils ne laissent aucune donnée derrière eux.
 
+Tests de bout en bout (Playwright), **sur une instance de test uniquement** : ils créent des
+comptes `e2ebabyfoot_*` et leurs parties, activent le module si besoin, puis suppriment tout.
+
+```bash
+npm i && npx playwright install chromium
+E2E_ALLOW_FIXTURES=1 E2E_ENTITY=<entité> BASE_URL=<url jusqu'à htdocs/> npx playwright test
+```
+
 ## Hors périmètre
 
 Ces points sont documentés comme évolutions possibles, pas comme des manques :
