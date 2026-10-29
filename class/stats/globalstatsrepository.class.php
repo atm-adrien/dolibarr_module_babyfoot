@@ -55,15 +55,17 @@ class GlobalStatsRepository
 	/**
 	 * Return the global totals.
 	 *
+	 * @param	int		$dateFrom	Start timestamp, 0 for no lower bound
+	 * @param	int		$dateTo		End timestamp, 0 for no upper bound
 	 * @return	array{nb_games:int,nb_goals:int,avg_goals:float}		Totals
 	 */
-	public function getTotals(): array
+	public function getTotals(int $dateFrom = 0, int $dateTo = 0): array
 	{
 		$totals = array('nb_games' => 0, 'nb_goals' => 0, 'avg_goals' => 0.0);
 
 		$sql = "SELECT COUNT(*) as nb_games, COALESCE(SUM(g.score_team1 + g.score_team2), 0) as nb_goals";
 		$sql .= " FROM ".$this->db->prefix()."babyfoot_game as g";
-		$sql .= $this->baseWhere();
+		$sql .= $this->baseWhere($dateFrom, $dateTo);
 
 		$resql = $this->db->query($sql);
 		if (!$resql) {
@@ -86,9 +88,11 @@ class GlobalStatsRepository
 	 * LEAST and GREATEST make sure each pair is counted once only.
 	 *
 	 * @param	int		$limit		How many duos to return
+	 * @param	int		$dateFrom	Start timestamp, 0 for no lower bound
+	 * @param	int		$dateTo		End timestamp, 0 for no upper bound
 	 * @return	array				List of array{user1:int,user2:int,nb:int,wins:int,ratio:float}
 	 */
-	public function getTopDuos(int $limit = 10): array
+	public function getTopDuos(int $limit = 10, int $dateFrom = 0, int $dateTo = 0): array
 	{
 		$duos = array();
 
@@ -98,7 +102,7 @@ class GlobalStatsRepository
 		$sql .= " INNER JOIN ".$this->db->prefix()."babyfoot_game_player as b";
 		$sql .= "   ON b.fk_game = a.fk_game AND b.team = a.team AND b.fk_user > a.fk_user";
 		$sql .= " INNER JOIN ".$this->db->prefix()."babyfoot_game as g ON g.rowid = a.fk_game";
-		$sql .= $this->baseWhere();
+		$sql .= $this->baseWhere($dateFrom, $dateTo);
 		$sql .= " AND g.mode = '".$this->db->escape(BabyfootConfig::MODE_2V2)."'";
 		$sql .= " GROUP BY LEAST(a.fk_user, b.fk_user), GREATEST(a.fk_user, b.fk_user)";
 		$sql .= " HAVING COUNT(*) >= ".((int) self::MIN_DUO_GAMES);
@@ -129,31 +133,45 @@ class GlobalStatsRepository
 	 * Return the tightest recent games.
 	 *
 	 * @param	int		$limit		How many games to return
+	 * @param	int		$dateFrom	Start timestamp, 0 for no lower bound
+	 * @param	int		$dateTo		End timestamp, 0 for no upper bound
 	 * @return	array				List of games, tightest first
 	 */
-	public function getTightestGames(int $limit = 5): array
+	public function getTightestGames(int $limit = 5, int $dateFrom = 0, int $dateTo = 0): array
 	{
-		return $this->getGamesByGap($limit, 'ASC');
+		return $this->getGamesByGap($limit, 'ASC', $dateFrom, $dateTo);
 	}
 
 	/**
 	 * Return the widest recent games.
 	 *
 	 * @param	int		$limit		How many games to return
+	 * @param	int		$dateFrom	Start timestamp, 0 for no lower bound
+	 * @param	int		$dateTo		End timestamp, 0 for no upper bound
 	 * @return	array				List of games, widest first
 	 */
-	public function getWidestGames(int $limit = 5): array
+	public function getWidestGames(int $limit = 5, int $dateFrom = 0, int $dateTo = 0): array
 	{
-		return $this->getGamesByGap($limit, 'DESC');
+		return $this->getGamesByGap($limit, 'DESC', $dateFrom, $dateTo);
 	}
 
 	/**
-	 * Return the fanny table, read from the ranking cache (no recomputation).
+	 * Return the fanny table.
 	 *
+	 * Without a period it is read from the ranking cache; with one it is
+	 * aggregated over the games, with the rule of RatingEngine: the winner
+	 * reached SCORE_MAX and the loser scored nothing.
+	 *
+	 * @param	int		$dateFrom	Start timestamp, 0 for no lower bound
+	 * @param	int		$dateTo		End timestamp, 0 for no upper bound
 	 * @return	array	List of array{fk_user:int,given:int,taken:int}
 	 */
-	public function getFannyTable(): array
+	public function getFannyTable(int $dateFrom = 0, int $dateTo = 0): array
 	{
+		if ($dateFrom > 0 || $dateTo > 0) {
+			return $this->getFannyTableForPeriod($dateFrom, $dateTo);
+		}
+
 		$rows = array();
 
 		$sql = "SELECT r.fk_user, r.nb_fanny_given, r.nb_fanny_taken";
@@ -187,9 +205,11 @@ class GlobalStatsRepository
 	 * Every weekday is present, even those with no game, so the chart keeps its
 	 * full scale.
 	 *
+	 * @param	int		$dateFrom	Start timestamp, 0 for no lower bound
+	 * @param	int		$dateTo		End timestamp, 0 for no upper bound
 	 * @return	array<int,int>	Games count indexed by weekday, 1 = Monday
 	 */
-	public function getDistributionByWeekday(): array
+	public function getDistributionByWeekday(int $dateFrom = 0, int $dateTo = 0): array
 	{
 		// Initialise every slot so an empty weekday still shows on the chart
 		$distribution = array();
@@ -200,7 +220,7 @@ class GlobalStatsRepository
 		// DAYOFWEEK() returns 1 for Sunday, so shift it to an ISO weekday
 		$sql = "SELECT DAYOFWEEK(g.date_game) as weekday, COUNT(*) as nb";
 		$sql .= " FROM ".$this->db->prefix()."babyfoot_game as g";
-		$sql .= $this->baseWhere();
+		$sql .= $this->baseWhere($dateFrom, $dateTo);
 		$sql .= " GROUP BY DAYOFWEEK(g.date_game)";
 
 		$resql = $this->db->query($sql);
@@ -220,9 +240,11 @@ class GlobalStatsRepository
 	/**
 	 * Return how many games were played per hour of the day.
 	 *
+	 * @param	int		$dateFrom	Start timestamp, 0 for no lower bound
+	 * @param	int		$dateTo		End timestamp, 0 for no upper bound
 	 * @return	array<int,int>	Games count indexed by hour, 0 to 23
 	 */
-	public function getDistributionByHour(): array
+	public function getDistributionByHour(int $dateFrom = 0, int $dateTo = 0): array
 	{
 		$distribution = array();
 		for ($hour = 0; $hour <= 23; $hour++) {
@@ -231,7 +253,7 @@ class GlobalStatsRepository
 
 		$sql = "SELECT HOUR(g.date_game) as hourofday, COUNT(*) as nb";
 		$sql .= " FROM ".$this->db->prefix()."babyfoot_game as g";
-		$sql .= $this->baseWhere();
+		$sql .= $this->baseWhere($dateFrom, $dateTo);
 		$sql .= " GROUP BY HOUR(g.date_game)";
 
 		$resql = $this->db->query($sql);
@@ -248,20 +270,19 @@ class GlobalStatsRepository
 	}
 
 	/**
-	 * Return the most active player over the last days.
+	 * Return the most active player over a period.
 	 *
-	 * @param	int			$days	Window in days
+	 * @param	int		$dateFrom	Start timestamp, 0 for no lower bound
+	 * @param	int		$dateTo		End timestamp, 0 for no upper bound
 	 * @return	array|null			array{fk_user:int, nb:int}, or null when nobody played
 	 */
-	public function getMostActivePlayer(int $days = 30): ?array
+	public function getMostActivePlayer(int $dateFrom, int $dateTo = 0): ?array
 	{
-		$since = dol_now() - ($days * 24 * 3600);
 
 		$sql = "SELECT gp.fk_user, COUNT(*) as nb";
 		$sql .= " FROM ".$this->db->prefix()."babyfoot_game_player as gp";
 		$sql .= " INNER JOIN ".$this->db->prefix()."babyfoot_game as g ON g.rowid = gp.fk_game";
-		$sql .= $this->baseWhere();
-		$sql .= " AND g.date_game >= '".$this->db->idate($since)."'";
+		$sql .= $this->baseWhere($dateFrom, $dateTo);
 		$sql .= " GROUP BY gp.fk_user";
 		$sql .= " ORDER BY nb DESC, gp.fk_user ASC";
 		$sql .= $this->db->plimit(1, 0);
@@ -285,9 +306,11 @@ class GlobalStatsRepository
 	 *
 	 * @param	int		$limit		How many games to return
 	 * @param	string	$direction	'ASC' for the tightest, 'DESC' for the widest
+	 * @param	int		$dateFrom	Start timestamp, 0 for no lower bound
+	 * @param	int		$dateTo		End timestamp, 0 for no upper bound
 	 * @return	array				List of games
 	 */
-	private function getGamesByGap(int $limit, string $direction): array
+	private function getGamesByGap(int $limit, string $direction, int $dateFrom, int $dateTo): array
 	{
 		$games = array();
 		$order = ($direction === 'DESC') ? 'DESC' : 'ASC';
@@ -295,7 +318,7 @@ class GlobalStatsRepository
 		$sql = "SELECT g.rowid, g.ref, g.date_game, g.mode, g.score_team1, g.score_team2,";
 		$sql .= " g.winner_team, ABS(g.score_team1 - g.score_team2) as gap";
 		$sql .= " FROM ".$this->db->prefix()."babyfoot_game as g";
-		$sql .= $this->baseWhere();
+		$sql .= $this->baseWhere($dateFrom, $dateTo);
 		$sql .= " ORDER BY gap ".$order.", g.date_game DESC";
 		$sql .= $this->db->plimit($limit, 0);
 
@@ -327,10 +350,61 @@ class GlobalStatsRepository
 	 * Filtering on the entity is mandatory here too: section 9 requires the
 	 * statistics to stay separated between entities.
 	 *
+	 * @param	int		$dateFrom	Start timestamp, 0 for no lower bound
+	 * @param	int		$dateTo		End timestamp, 0 for no upper bound
 	 * @return	string	SQL fragment starting with WHERE
 	 */
-	private function baseWhere(): string
+	private function baseWhere(int $dateFrom, int $dateTo): string
 	{
-		return " WHERE g.entity = ".((int) $this->entity)." AND g.status = ".((int) Game::STATUS_VALIDATED);
+		$sql = " WHERE g.entity = ".((int) $this->entity)." AND g.status = ".((int) Game::STATUS_VALIDATED);
+		if ($dateFrom > 0) {
+			$sql .= " AND g.date_game >= '".$this->db->idate($dateFrom)."'";
+		}
+		if ($dateTo > 0) {
+			$sql .= " AND g.date_game <= '".$this->db->idate($dateTo)."'";
+		}
+
+		return $sql;
+	}
+
+	/**
+	 * Aggregate the fanny table over the games of a period.
+	 *
+	 * @param	int		$dateFrom	Start timestamp, 0 for no lower bound
+	 * @param	int		$dateTo		End timestamp, 0 for no upper bound
+	 * @return	array				List of array{fk_user:int,given:int,taken:int}
+	 */
+	private function getFannyTableForPeriod(int $dateFrom, int $dateTo): array
+	{
+		$rows = array();
+		$max = (int) BabyfootConfig::SCORE_MAX;
+		$scoreFor = "CASE WHEN gp.team = 1 THEN g.score_team1 ELSE g.score_team2 END";
+		$scoreAgainst = "CASE WHEN gp.team = 1 THEN g.score_team2 ELSE g.score_team1 END";
+		$given = "SUM(CASE WHEN ".$scoreFor." = ".$max." AND ".$scoreAgainst." = 0 THEN 1 ELSE 0 END)";
+		$taken = "SUM(CASE WHEN ".$scoreAgainst." = ".$max." AND ".$scoreFor." = 0 THEN 1 ELSE 0 END)";
+
+		$sql = "SELECT gp.fk_user, ".$given." as given, ".$taken." as taken";
+		$sql .= " FROM ".$this->db->prefix()."babyfoot_game_player as gp";
+		$sql .= " INNER JOIN ".$this->db->prefix()."babyfoot_game as g ON g.rowid = gp.fk_game";
+		$sql .= $this->baseWhere($dateFrom, $dateTo);
+		$sql .= " GROUP BY gp.fk_user";
+		$sql .= " HAVING ".$given." > 0 OR ".$taken." > 0";
+		$sql .= " ORDER BY given DESC, taken ASC, gp.fk_user ASC";
+
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			dol_syslog('GlobalStatsRepository::getFannyTableForPeriod '.$this->db->lasterror(), LOG_ERR);
+			return $rows;
+		}
+		while ($obj = $this->db->fetch_object($resql)) {
+			$rows[] = array(
+				'fk_user' => (int) $obj->fk_user,
+				'given' => (int) $obj->given,
+				'taken' => (int) $obj->taken,
+			);
+		}
+		$this->db->free($resql);
+
+		return $rows;
 	}
 }

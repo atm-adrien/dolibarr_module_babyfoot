@@ -134,9 +134,8 @@ if ($action === 'add') {
 		// Remember the mode for the next game
 		dol_set_user_param($db, $conf, $user, array('BABYFOOT_LAST_MODE' => $mode));
 
-		// No redirect to the card: come back on a blank form, ready for the next game
+		// No redirect to the card: the same players usually play the next game
 		$postedScore = array(1 => '', 2 => '');
-		$postedPlayers = array();
 		$action = '';
 	} else {
 		if (!empty($game->validationErrors)) {
@@ -184,7 +183,10 @@ print '</div>';
 print '<div class="babyfoot-teams">';
 for ($team = 1; $team <= 2; $team++) {
 	if ($team === 2) {
-		print '<div class="babyfoot-vs">'.dol_escape_htmltag($langs->trans('BabyfootVersus')).'</div>';
+		print '<button type="button" class="babyfoot-vs babyfoot-swap" onclick="babyfootSwapTeams('.$playersPerTeam.')"';
+		print ' title="'.dol_escape_htmltag($langs->trans('BabyfootSwapTeams')).'" aria-label="'.dol_escape_htmltag($langs->trans('BabyfootSwapTeams')).'">';
+		print img_picto('', 'fa-exchange-alt');
+		print '</button>';
 	}
 
 	print '<div class="babyfoot-team babyfoot-team'.$team.'">';

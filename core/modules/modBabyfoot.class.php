@@ -50,7 +50,7 @@ class modBabyfoot extends DolibarrModules
 		$this->descriptionlong = 'BabyfootModuleDescriptionLong';
 		$this->editor_name = 'ATM Consulting';
 		$this->editor_url = 'https://www.atm-consulting.fr';
-		$this->version = '1.0.0';
+		$this->version = '1.1.0';
 		$this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
 		$this->picto = '^fa-futbol';
 
@@ -62,15 +62,11 @@ class modBabyfoot extends DolibarrModules
 		$this->dirs = array();
 
 		$this->module_parts = array(
-			// Feeds MAIN_MODULE_BABYFOOT_ICON, read by the theme to build the top menu
-			// icon. Declared explicitly because the auto detection of DolibarrModules
-			// tests /^fa-/ against $this->picto, which the leading '^' defeats.
-			'icon' => 'fa-futbol',
 			'css' => array('/babyfoot/css/babyfoot.css.php'),
 			'js' => array('/babyfoot/js/babyfoot.js.php'),
 			'models' => 1,
 			'hooks' => array(),
-			// 'restapi' => 1,	// v2: see class/api_babyfoot.class.php
+			'restapi' => 1,
 		);
 
 		$this->config_page_url = array('setup.php@babyfoot');
@@ -151,12 +147,8 @@ class modBabyfoot extends DolibarrModules
 	}
 
 	/**
-	 * Declare the module menus: one top entry and three first level left entries,
-	 * Games and Players carrying two children each, Statistics standing alone
-	 * since collective statistics describe no single player.
-	 *
-	 * The top entry points to the quick entry screen and not to a dashboard:
-	 * recording a game is the purpose of the module (spec section 1).
+	 * Declare the module menus: no top entry, one left entry under the Tools main
+	 * menu that opens the quick entry screen, and its children on a single level.
 	 *
 	 * @return	void
 	 */
@@ -164,41 +156,24 @@ class modBabyfoot extends DolibarrModules
 	{
 		$r = 0;
 
-		$this->menu[$r++] = array(
-			'fk_menu' => '',
-			'type' => 'top',
-			'titre' => 'BabyfootMenuTop',
-			'prefix' => img_picto('', 'fa-futbol', 'class="pictofixedwidth valignmiddle"'),
-			'mainmenu' => 'babyfoot',
-			'leftmenu' => '',
-			'url' => '/babyfoot/game_quickadd.php',
-			'langs' => 'babyfoot@babyfoot',
-			'position' => 1000 + $r,
-			'enabled' => 'isModEnabled("babyfoot")',
-			'perms' => '$user->hasRight("babyfoot", "read")',
-			'target' => '',
-			'user' => 0,
-		);
-
-		// A non empty 'parent' nests the entry under that leftmenu code. Menubase only
-		// inserts a child once its parent is already in the list, so a parent must be
-		// declared before its children and therefore keep a lower position.
+		// Menubase only inserts a child once its parent is already in the list, so the
+		// parent must be declared first and therefore keep the lowest position.
 		$leftEntries = array(
-			array('titre' => 'BabyfootMenuGames', 'leftmenu' => 'babyfoot_games', 'parent' => '', 'url' => '/babyfoot/game_list.php', 'perm' => 'read'),
-			array('titre' => 'BabyfootMenuNewGame', 'leftmenu' => 'babyfoot_new', 'parent' => 'babyfoot_games', 'url' => '/babyfoot/game_quickadd.php', 'perm' => 'create'),
-			array('titre' => 'BabyfootMenuGameList', 'leftmenu' => 'babyfoot_gamelist', 'parent' => 'babyfoot_games', 'url' => '/babyfoot/game_list.php', 'perm' => 'read'),
-			array('titre' => 'BabyfootMenuPlayers', 'leftmenu' => 'babyfoot_players', 'parent' => '', 'url' => '/babyfoot/player_list.php', 'perm' => 'read'),
-			array('titre' => 'BabyfootMenuPlayerList', 'leftmenu' => 'babyfoot_playerlist', 'parent' => 'babyfoot_players', 'url' => '/babyfoot/player_list.php', 'perm' => 'read'),
-			array('titre' => 'BabyfootMenuRanking', 'leftmenu' => 'babyfoot_ranking', 'parent' => 'babyfoot_players', 'url' => '/babyfoot/ranking.php', 'perm' => 'read'),
-			array('titre' => 'BabyfootMenuStats', 'leftmenu' => 'babyfoot_stats', 'parent' => '', 'url' => '/babyfoot/stats.php', 'perm' => 'read'),
+			array('titre' => 'BabyfootMenuTop', 'leftmenu' => 'babyfoot', 'parent' => '', 'url' => '/babyfoot/game_quickadd.php', 'perm' => 'read'),
+			array('titre' => 'BabyfootMenuNewGame', 'leftmenu' => 'babyfoot_new', 'parent' => 'babyfoot', 'url' => '/babyfoot/game_quickadd.php', 'perm' => 'create'),
+			array('titre' => 'BabyfootMenuGames', 'leftmenu' => 'babyfoot_games', 'parent' => 'babyfoot', 'url' => '/babyfoot/game_list.php', 'perm' => 'read'),
+			array('titre' => 'BabyfootMenuPlayers', 'leftmenu' => 'babyfoot_players', 'parent' => 'babyfoot', 'url' => '/babyfoot/player_list.php', 'perm' => 'read'),
+			array('titre' => 'BabyfootMenuRanking', 'leftmenu' => 'babyfoot_ranking', 'parent' => 'babyfoot', 'url' => '/babyfoot/ranking.php', 'perm' => 'read'),
+			array('titre' => 'BabyfootMenuStats', 'leftmenu' => 'babyfoot_stats', 'parent' => 'babyfoot', 'url' => '/babyfoot/stats.php', 'perm' => 'read'),
 		);
 
 		foreach ($leftEntries as $entry) {
 			$this->menu[$r++] = array(
-				'fk_menu' => 'fk_mainmenu=babyfoot'.($entry['parent'] !== '' ? ',fk_leftmenu='.$entry['parent'] : ''),
+				'fk_menu' => 'fk_mainmenu=tools'.($entry['parent'] !== '' ? ',fk_leftmenu='.$entry['parent'] : ''),
 				'type' => 'left',
 				'titre' => $entry['titre'],
-				'mainmenu' => 'babyfoot',
+				'prefix' => ($entry['parent'] === '' ? 'fa-futbol' : ''),
+				'mainmenu' => 'tools',
 				'leftmenu' => $entry['leftmenu'],
 				'url' => $entry['url'],
 				'langs' => 'babyfoot@babyfoot',

@@ -20,9 +20,18 @@
  * \ingroup babyfoot
  * \brief   Tab preparation functions of the babyfoot module.
  *
- * This file holds prepareHead functions ONLY. Every piece of business logic
- * belongs to a class under class/ — do not turn this file into a catch-all.
+ * This file holds prepareHead functions ONLY, plus the visibility guard of the
+ * documentation tab. Every piece of business logic belongs to a class under
+ * class/ — do not turn this file into a catch-all.
  */
+
+/**
+ * @return	bool	True when the documentation admin tab is enabled range-wide
+ */
+function babyfootDocumentationIsEnabled(): bool
+{
+	return getDolGlobalInt('ATM_SHOW_DOCUMENTATION_TAB') > 0;
+}
 
 /**
  * Prepare the tabs of the module setup pages.
@@ -43,10 +52,12 @@ function babyfootAdminPrepareHead(): array
 	$head[$h][2] = 'settings';
 	$h++;
 
-	$head[$h][0] = dol_buildpath('/babyfoot/admin/babyfoot_documentation.php', 1);
-	$head[$h][1] = $langs->trans('babyfootDocumentation');
-	$head[$h][2] = 'documentation';
-	$h++;
+	if (babyfootDocumentationIsEnabled()) {
+		$head[$h][0] = dol_buildpath('/babyfoot/admin/babyfoot_documentation.php', 1);
+		$head[$h][1] = $langs->trans('babyfootDocumentation');
+		$head[$h][2] = 'documentation';
+		$h++;
+	}
 
 	$head[$h][0] = dol_buildpath('/babyfoot/admin/babyfoot_about.php', 1);
 	$head[$h][1] = $langs->trans('About');

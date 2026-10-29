@@ -53,6 +53,12 @@ class BabyfootConfig
 	/** @var int K factor of the Elo formula, identical for every player (RG-15) */
 	const ELO_K = 40;
 
+	/** @var string Period covering the whole history */
+	const PERIOD_ALL = 'all';
+
+	/** @var int Window in days used for the most active player when no period is chosen */
+	const MOST_ACTIVE_DEFAULT_DAYS = 30;
+
 	/**
 	 * Return the real game modes, excluding the overall pseudo mode.
 	 *
@@ -89,6 +95,31 @@ class BabyfootConfig
 		}
 
 		return 0;
+	}
+
+	/**
+	 * Return the periods offered by the ranking and statistics screens.
+	 *
+	 * @return	string[]	Days as strings, plus PERIOD_ALL
+	 */
+	public static function periods(): array
+	{
+		return array('30', '90', '365', self::PERIOD_ALL);
+	}
+
+	/**
+	 * Return the start timestamp of a period.
+	 *
+	 * @param	string	$period		One of periods()
+	 * @return	int					0 for PERIOD_ALL or an unknown period
+	 */
+	public static function periodStart(string $period): int
+	{
+		if ($period === self::PERIOD_ALL || !in_array($period, self::periods(), true)) {
+			return 0;
+		}
+
+		return dol_now() - ((int) $period * 24 * 3600);
 	}
 
 	/**

@@ -41,8 +41,14 @@ if (!$user->hasRight('babyfoot', 'read')) {
 	accessforbidden();
 }
 
+$period = GETPOST('period', 'aZ09');
+if (!in_array($period, BabyfootConfig::periods(), true)) {
+	$period = BabyfootConfig::PERIOD_ALL;
+}
+$dateFrom = BabyfootConfig::periodStart($period);
+
 $repository = new GlobalStatsRepository($db, (int) $conf->entity);
-$totals = $repository->getTotals();
+$totals = $repository->getTotals($dateFrom);
 
 /**
  * Resolve the display names of a set of players, in one pass.
@@ -139,7 +145,7 @@ llxHeader('', $langs->trans('BabyfootMenuStats'), '', '', 0, 0, array(), array()
 print load_fiche_titre($langs->trans('BabyfootMenuStats'), '', 'fa-futbol');
 
 // Empty state (section 9): no chart at all rather than empty charts
-if ((int) $totals['nb_games'] === 0) {
+if ((int) $totals['nb_games'] === 0 && $period === BabyfootConfig::PERIOD_ALL) {
 	print '<div class="babyfoot-empty opacitymedium">';
 	print dol_escape_htmltag($langs->trans('BabyfootNoGameYet')).'<br><br>';
 	print '<a class="button" href="'.dol_buildpath('/babyfoot/game_quickadd.php', 1).'">';
@@ -151,10 +157,34 @@ if ((int) $totals['nb_games'] === 0) {
 	exit;
 }
 
+print '<div class="babyfoot-period-selector paddingbottom">';
+$periodLabels = array(
+	'30' => $langs->trans('BabyfootPeriod30'),
+	'90' => $langs->trans('BabyfootPeriod90'),
+	'365' => $langs->trans('BabyfootPeriodYear'),
+	BabyfootConfig::PERIOD_ALL => $langs->trans('BabyfootPeriodAll'),
+);
+foreach ($periodLabels as $value => $label) {
+	$css = ((string) $value === $period) ? ' class="babyfoot-winner"' : '';
+	print '<a href="'.$_SERVER['PHP_SELF'].'?period='.urlencode($value).'"'.$css.'>';
+	print dol_escape_htmltag($label);
+	print '</a> &nbsp; ';
+}
+print '</div>';
+
+if ((int) $totals['nb_games'] === 0) {
+	print '<div class="babyfoot-empty opacitymedium">'.dol_escape_htmltag($langs->trans('BabyfootNoGameInPeriod')).'</div>';
+	llxFooter();
+	$db->close();
+	exit;
+}
+
 // Load the data sets first, so every player name is resolved in a single pass
-$mostActive = $repository->getMostActivePlayer(30);
-$duos = $repository->getTopDuos(10);
-$fannies = $repository->getFannyTable();
+// Without a period, "most active" keeps its historical meaning: the last 30 days
+$mostActiveFrom = ($dateFrom > 0) ? $dateFrom : (dol_now() - BabyfootConfig::MOST_ACTIVE_DEFAULT_DAYS * 24 * 3600);
+$mostActive = $repository->getMostActivePlayer($mostActiveFrom);
+$duos = $repository->getTopDuos(10, $dateFrom);
+$fannies = $repository->getFannyTable($dateFrom);
 
 $userIds = array();
 if (!is_null($mostActive)) {
@@ -176,7 +206,8 @@ print '<tr><td class="titlefield">'.$langs->trans('BabyfootTotalGames').'</td><t
 print '<tr><td>'.$langs->trans('BabyfootTotalGoals').'</td><td>'.((int) $totals['nb_goals']).'</td></tr>';
 print '<tr><td>'.$langs->trans('BabyfootAvgGoalsPerGame').'</td><td>'.price2num((float) $totals['avg_goals'], 2).'</td></tr>';
 
-print '<tr><td>'.$langs->trans('BabyfootMostActivePlayer').'</td><td>';
+$mostActiveLabel = ($dateFrom > 0) ? 'BabyfootMostActivePlayerPeriod' : 'BabyfootMostActivePlayer';
+print '<tr><td>'.$langs->trans($mostActiveLabel).'</td><td>';
 if (is_null($mostActive)) {
 	print '<span class="opacitymedium">'.dol_escape_htmltag($langs->trans('BabyfootNoGameYet')).'</span>';
 } else {
@@ -212,8 +243,8 @@ if (empty($duos)) {
 }
 
 // Tightest and widest games
-babyfootStatsGameTable($repository->getTightestGames(5), 'BabyfootTightestGames', $db, $langs);
-babyfootStatsGameTable($repository->getWidestGames(5), 'BabyfootWidestGames', $db, $langs);
+babyfootStatsGameTable($repository->getTightestGames(5, $dateFrom), 'BabyfootTightestGames', $db, $langs);
+babyfootStatsGameTable($repository->getWidestGames(5, $dateFrom), 'BabyfootWidestGames', $db, $langs);
 
 // Fanny table
 print load_fiche_titre($langs->trans('BabyfootFannyTable'), '', '');
@@ -239,7 +270,7 @@ if (empty($fannies)) {
 }
 
 // When do people actually play
-$byWeekday = $repository->getDistributionByWeekday();
+$byWeekday = $repository->getDistributionByWeekday($dateFrom);
 $weekdayData = array();
 foreach ($byWeekday as $isoDay => $count) {
 	// Day1 to Day7 are core translation keys, Day1 being Monday
@@ -261,7 +292,7 @@ if (!$graphWeekday->isGraphKo()) {
 	print '<br>';
 }
 
-$byHour = $repository->getDistributionByHour();
+$byHour = $repository->getDistributionByHour($dateFrom);
 $hourData = array();
 foreach ($byHour as $hour => $count) {
 	$hourData[] = array(sprintf('%02dh', $hour), $count);

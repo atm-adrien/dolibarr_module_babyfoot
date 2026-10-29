@@ -30,10 +30,13 @@ class/
   rating.class.php             une ligne de classement
   ratingset.class.php          collection [fk_user][mode], chargement base OU mémoire
   ratingengine.class.php       SEULE classe autorisée à écrire dans babyfoot_rating
-  stats/                       repositories de lecture seule (agrégats)
+  stats/                       repositories de lecture seule (agrégats) ; GameRepository
+                               charge N parties en 3 requêtes et lève une Exception sur erreur SQL
+  api_babyfoot.class.php       API REST /babyfoot/games — appelle Game, jamais de règle propre
 core/modules/modBabyfoot.class.php    descripteur
 core/modules/babyfoot/                modèle de numérotation BF{yy}{mm}-{0000}
-lib/babyfoot.lib.php           prepareHead UNIQUEMENT — pas un fourre-tout
+lib/babyfoot.lib.php           prepareHead + garde babyfootDocumentationIsEnabled() UNIQUEMENT
+lib/babyfoot_doc.lib.php       rendu de l'onglet doc — généré par `team-ai-scaffold docs`, ne pas éditer
 docs/configuration.md          source de l'onglet documentation en ligne
 ```
 
@@ -43,6 +46,9 @@ docs/configuration.md          source de l'onglet documentation en ligne
 # Suite de tests du module
 cd /home/client/standard/demo22/dolibarr/htdocs/custom/babyfoot
 /home/atm-adrien/bin/phpunit -c /home/client/standard/demo22/dolibarr/test/phpunit/phpunittest.xml test/phpunit/
+
+# Tests E2E Playwright (instance jetable uniquement : écrit en base, active le module si besoin)
+npm i && E2E_ALLOW_FIXTURES=1 E2E_ENTITY=<entity> BASE_URL=<url htdocs/> npx playwright test
 
 # Recalcul complet du classement en CLI
 php scripts/recompute_ratings.php <entity>
@@ -100,13 +106,20 @@ un tableau résolu, jamais `$conf`.
   passe à `img_object()`** — `modBabyfoot::$picto`, `Game::$picto`, `$boximg` du widget.
   Sans le `^`, `img_object()` préfixe `object_`, ce qui casse la détection FontAwesome
   d'`img_picto()` et affiche le picto générique. Dans les appels directs à `img_picto()`,
-  `load_fiche_titre()`, `dol_get_fiche_head()` et `print_barre_liste()`, écrire `'fa-futbol'` nu.
-- **`module_parts['icon']` doit être déclaré à la main.** L'icône du menu du bandeau ne
-  vient ni du `prefix` du menu ni de `$this->picto` : le thème lit `MAIN_MODULE_BABYFOOT_ICON`
-  et, faute de constante, écrase le glyphe par `div.mainmenu.babyfoot span::before { content: "\f249" }`.
-  `DolibarrModules::insert_module_parts()` déduit bien cette constante de `$this->picto`, mais
-  son test `/^fa-/` échoue sur `'^fa-futbol'`. La constante n'est écrite qu'à l'activation :
-  toute modification impose un cycle désactivation/réactivation pour être visible.
+  `load_fiche_titre()`, `dol_get_fiche_head()`, `print_barre_liste()` et dans le `prefix`
+  d'un menu gauche, écrire `'fa-futbol'` nu.
+- **Pas de menu dans le bandeau du haut** : tout est sous `fk_mainmenu=tools`, `mainmenu => 'tools'`.
+  Les menus ne sont écrits en base qu'à l'activation : toute modification impose un cycle
+  désactivation/réactivation pour être visible.
+- **E2E : les comptes de test portent le préfixe `e2ebabyfoot_`**, c'est par lui que
+  `tests/e2e/fixtures/teardown.php` supprime parties et comptes. Avec Multicompany, le login
+  choisit l'entité `E2E_ENTITY` dans le formulaire : sans cela la session tombe dans une autre entité.
+- **Les périodes passent par `BabyfootConfig::periods()` / `periodStart()`.** Leurs codes
+  `'30'`, `'90'`, `'365'` deviennent des clés **entières** dans un tableau PHP : comparer avec
+  `(string) $key === $period`, sinon aucune période n'est jamais sélectionnée.
+- **La classe d'API s'appelle `Babyfoot`, pas `BabyfootApi`.** `api/index.php` déduit le nom de
+  classe du premier segment d'URL : c'est ce qui sert les routes sous `/babyfoot/...`.
+  Dans un test PHPUnit, renseigner `DolibarrApiAccess::$user` avant d'appeler une méthode.
 - **Un sous-menu gauche doit avoir une `position` supérieure à celle de son parent.**
   `Menubase::menuLoad()` insère un enfant uniquement si le couple
   (`fk_mainmenu`, `fk_leftmenu`) de son parent figure déjà dans la liste construite.
@@ -152,7 +165,6 @@ un tableau résolu, jamais `$conf`.
   L'imbrication `begin`/`commit` de DoliDB est comptée par références, mais un `rollback()` interne
   annule tout — comportement voulu : si le recalcul échoue, la partie ne s'enregistre pas.
 
-## Hors périmètre v1
+## Hors périmètre
 
-Saisie but par but, saisons, validation par l'adversaire, tournois, notifications, API REST
-(l'emplacement `class/api_babyfoot.class.php` est prévu mais non déclaré dans `module_parts`).
+Saisie but par but, saisons, validation par l'adversaire, tournois, notifications.

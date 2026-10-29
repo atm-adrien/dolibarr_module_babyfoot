@@ -164,7 +164,7 @@ header('Cache-Control: max-age=86400, public, must-revalidate');
 	box-sizing: border-box;
 }
 
-/* VS badge */
+/* Swap button between the two teams */
 .babyfoot-vs {
 	align-self: center;
 	display: flex;
@@ -179,6 +179,15 @@ header('Cache-Control: max-age=86400, public, must-revalidate');
 	font-weight: 700;
 	letter-spacing: 0.02em;
 	opacity: 0.75;
+}
+.babyfoot-swap {
+	padding: 0;
+	cursor: pointer;
+	color: inherit;
+}
+.babyfoot-swap:hover,
+.babyfoot-swap:focus {
+	opacity: 1;
 }
 
 /* Score: a single field per camp, no stepper at all */

@@ -82,6 +82,22 @@ function babyfootPromoteSuggestions(selectId, ids) {
 }
 
 /**
+ * Swap the players of the blue and red teams, slot by slot. Scores stay in place.
+ *
+ * @param {number} playersPerTeam Number of player slots per team
+ * @return {void}
+ */
+function babyfootSwapTeams(playersPerTeam) {
+	for (var slot = 1; slot <= playersPerTeam; slot++) {
+		var blue = jQuery('#player_1_' + slot);
+		var red = jQuery('#player_2_' + slot);
+		var blueValue = blue.val();
+		blue.val(red.val()).trigger('change');
+		red.val(blueValue).trigger('change');
+	}
+}
+
+/**
  * Toggle a collapsed block.
  *
  * @param {string} boxId Id of the block to toggle
