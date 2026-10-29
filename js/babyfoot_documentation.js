@@ -2,7 +2,6 @@
  *
  * Active-section tracking and smooth scrolling for the module
  * documentation admin tab (GitBook-like layout).
- * Generated from team-ai-config skeleton — no placeholder needed here.
  */
 
 document.addEventListener("DOMContentLoaded", function () {

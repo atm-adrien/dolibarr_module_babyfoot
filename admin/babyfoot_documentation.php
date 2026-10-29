@@ -18,12 +18,10 @@
 /**
  *	\file		admin/babyfoot_documentation.php
  *	\ingroup	babyfoot
- *	\brief		Documentation admin tab (GitBook-like layout) — generated from team-ai-config skeleton
+ *	\brief		Documentation admin tab (GitBook-like layout)
  *
- *	PLACEHOLDERS to substitute when scaffolding:
- *	  babyfoot          module slug (e.g. doc2project)
- *	  ModuleBabyfootName lang key of the module label (e.g. Module104250Name)
- *	  babyfootDocumentation       page title lang key (e.g. MymoduleDocumentation)
+ *	View only: the markdown parsing and rendering live in lib/babyfoot_doc.lib.php, which is
+ *	includable and therefore testable - this file calls llxHeader() and cannot be required.
  */
 
 // Dolibarr environment
@@ -38,12 +36,14 @@ if (! $res) {
 // Libraries
 require_once DOL_DOCUMENT_ROOT . "/core/lib/admin.lib.php";
 require_once __DIR__ . "/../lib/babyfoot.lib.php";
+require_once __DIR__ . "/../lib/babyfoot_doc.lib.php";
 
 // Translations
-$langs->load("babyfoot@babyfoot");
+// "admin" carries BackToModuleList used below; main.inc.php loads main/dict/errors/other only
+$langs->loadLangs(["admin", "babyfoot@babyfoot"]);
 
-// Access control
-if (empty($user->admin)) {
+// Access control — hiding the tab is cosmetic, this page URL stays reachable.
+if (empty($user->admin) || ! babyfootDocumentationIsEnabled()) {
 	accessforbidden();
 }
 
@@ -53,19 +53,19 @@ if (empty($user->admin)) {
 $pageName = "babyfootDocumentation";
 
 // External CSS / JS assets
-$arrayofcss = array('/babyfoot/css/babyfoot_documentation.css');
-$arrayofjs  = array('/babyfoot/js/babyfoot_documentation.js');
+$arrayofcss = ['/babyfoot/css/babyfoot_documentation.css'];
+$arrayofjs  = ['/babyfoot/js/babyfoot_documentation.js'];
 
 llxHeader('', $langs->trans($pageName), '', '', 0, 0, $arrayofjs, $arrayofcss);
 
 // Subheader
 $linkback = '<a href="' . DOL_URL_ROOT . '/admin/modules.php">'
 	. $langs->trans("BackToModuleList") . '</a>';
-print_fiche_titre($langs->trans($pageName), $linkback);
+print load_fiche_titre($langs->trans($pageName), $linkback);
 
 // Configuration header (tab strip — prepareHead lives in lib/babyfoot.lib.php)
 $head = babyfootAdminPrepareHead();
-dol_fiche_head(
+print dol_get_fiche_head(
 	$head,
 	'documentation',
 	$langs->trans("ModuleBabyfootName"),
@@ -73,205 +73,22 @@ dol_fiche_head(
 	"generic"
 );
 
-// Read and parse markdown source
-$docFile = __DIR__ . '/../docs/configuration.md';
-if (! file_exists($docFile)) {
+// Read and parse the documentation source
+$parsed = babyfootLoadDocumentation(__DIR__ . '/../docs');
+if ($parsed === null) {
 	print '<div class="warning">' . $langs->trans("babyfootDocumentationFileNotFound") . '</div>';
-	dol_fiche_end(-1);
+	print dol_get_fiche_end(-1);
 	llxFooter();
 	$db->close();
 	return;
 }
 
-$markdownContent = file_get_contents($docFile);
-$parsed = babyfootParseMarkdown($markdownContent);
-$toc = $parsed['toc'];
-$sections = $parsed['sections'];
+$toc = $parsed['toc'] ?? [];
+$sections = $parsed['sections'] ?? [];
 
 // Render layout
-print '<div class="aidoc-wrapper">';
+print babyfootRenderDoc($toc, $sections, (bool) ($parsed['byFeature'] ?? false));
 
-// Sidebar
-print '<nav class="aidoc-sidebar" id="aidoc-sidebar">';
-foreach ($toc as $entry) {
-	if ($entry['level'] === 2) {
-		print '<div class="aidoc-nav-title">' . htmlspecialchars($entry['text'], ENT_QUOTES, 'UTF-8') . '</div>';
-	} else {
-		print '<a href="#' . $entry['id'] . '" data-section="' . $entry['id'] . '">'
-			. htmlspecialchars($entry['text'], ENT_QUOTES, 'UTF-8') . '</a>';
-	}
-}
-print '</nav>';
-
-// Content
-print '<div class="aidoc-content" id="aidoc-content">';
-foreach ($sections as $section) {
-	print $section['html'];
-}
-print '</div>';
-
-print '</div>';
-
-dol_fiche_end(-1);
+print dol_get_fiche_end(-1);
 llxFooter();
 $db->close();
-
-
-/**
- * Parse markdown documentation into structured TOC and HTML sections.
- *
- * @param string $markdown Raw markdown content
- * @return array{toc: array, sections: array}
- */
-function babyfootParseMarkdown(string $markdown): array
-{
-	$lines = explode("\n", $markdown);
-	$toc = array();
-	$sections = array();
-	$currentSection = null;
-	$buffer = array();
-
-	foreach ($lines as $line) {
-		$trimmed = trim($line);
-
-		// Detect headers h2 or h3
-		if (preg_match('/^(#{2,3})\s+(.+)$/', $trimmed, $matches)) {
-			if ($currentSection !== null) {
-				$currentSection['html'] .= babyfootRenderBuffer($buffer);
-				$buffer = array();
-				$sections[] = $currentSection;
-			}
-
-			$level = strlen($matches[1]);
-			$text = $matches[2];
-			$id = babyfootSlugify($text);
-
-			$toc[] = array('level' => $level, 'text' => $text, 'id' => $id);
-
-			$tag = ($level === 2) ? 'h2' : 'h3';
-			$currentSection = array(
-				'id' => $id,
-				'level' => $level,
-				'html' => '<div class="aidoc-section" id="' . $id . '"><' . $tag . '>'
-					. htmlspecialchars($text, ENT_QUOTES, 'UTF-8') . '</' . $tag . '>',
-			);
-			continue;
-		}
-
-		// Skip h1 and pre-first-section content (TOC area)
-		if (preg_match('/^#\s+/', $trimmed)) {
-			continue;
-		}
-		if ($currentSection === null) {
-			continue;
-		}
-
-		$buffer[] = $line;
-	}
-
-	if ($currentSection !== null) {
-		$currentSection['html'] .= babyfootRenderBuffer($buffer);
-		$sections[] = $currentSection;
-	}
-
-	foreach ($sections as &$s) {
-		$s['html'] .= '</div>';
-	}
-	unset($s);
-
-	return array('toc' => $toc, 'sections' => $sections);
-}
-
-/**
- * Render a buffer of markdown lines into HTML (paragraphs, lists, notes, examples).
- *
- * @param string[] $lines Lines of markdown
- * @return string HTML
- */
-function babyfootRenderBuffer(array $lines): string
-{
-	$html = '';
-	$i = 0;
-	$count = count($lines);
-
-	while ($i < $count) {
-		$trimmed = trim($lines[$i]);
-
-		if ($trimmed === '') {
-			$i++;
-			continue;
-		}
-
-		// Blockquote (notes / warnings)
-		if (preg_match('/^>\s*(.*)$/', $trimmed, $matches)) {
-			$noteContent = $matches[1];
-			$i++;
-			while ($i < $count && preg_match('/^>\s*(.*)$/', trim($lines[$i]), $bqm)) {
-				$noteContent .= ' ' . $bqm[1];
-				$i++;
-			}
-
-			$cssClass = 'aidoc-note';
-			if (stripos($noteContent, 'Attention') !== false || stripos($noteContent, 'Warning') !== false) {
-				$cssClass .= ' aidoc-note-warning';
-			} elseif (stripos($noteContent, 'Note') !== false || stripos($noteContent, 'Info') !== false) {
-				$cssClass .= ' aidoc-note-info';
-			}
-
-			$html .= '<div class="' . $cssClass . '">' . babyfootInline($noteContent) . '</div>';
-			continue;
-		}
-
-		// Unordered list
-		if (preg_match('/^[-*]\s+/', $trimmed)) {
-			$html .= '<ul>';
-			while ($i < $count && preg_match('/^[-*]\s+(.+)$/', trim($lines[$i]), $lm)) {
-				$html .= '<li>' . babyfootInline($lm[1]) . '</li>';
-				$i++;
-			}
-			$html .= '</ul>';
-			continue;
-		}
-
-		// Regular paragraph
-		$html .= '<p>' . babyfootInline($trimmed) . '</p>';
-		$i++;
-	}
-
-	return $html;
-}
-
-/**
- * Format inline markdown: bold, italic, code.
- *
- * @param string $text Raw text
- * @return string HTML
- */
-function babyfootInline(string $text): string
-{
-	$text = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
-	$text = preg_replace('/`([^`]+)`/', '<code>$1</code>', $text);
-	$text = preg_replace('/\*\*\*(.+?)\*\*\*/', '<strong><em>$1</em></strong>', $text);
-	$text = preg_replace('/\*\*(.+?)\*\*/', '<strong>$1</strong>', $text);
-	$text = preg_replace('/\*(.+?)\*/', '<em>$1</em>', $text);
-	return $text;
-}
-
-/**
- * Generate a URL-safe slug from header text.
- *
- * @param string $text Header text
- * @return string Slug
- */
-function babyfootSlugify(string $text): string
-{
-	$text = mb_strtolower($text, 'UTF-8');
-	$text = str_replace(
-		array('à', 'â', 'ä', 'é', 'è', 'ê', 'ë', 'î', 'ï', 'ô', 'ö', 'ù', 'û', 'ü', 'ç', 'ñ'),
-		array('a', 'a', 'a', 'e', 'e', 'e', 'e', 'i', 'i', 'o', 'o', 'u', 'u', 'u', 'c', 'n'),
-		$text
-	);
-	$text = str_replace(array("'", "\xe2\x80\x99", "\xe2\x80\x98"), '', $text);
-	$text = preg_replace('/[^a-z0-9]+/', '-', $text);
-	return trim($text, '-');
-}

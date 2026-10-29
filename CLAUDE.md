@@ -33,7 +33,8 @@ class/
   stats/                       repositories de lecture seule (agrégats)
 core/modules/modBabyfoot.class.php    descripteur
 core/modules/babyfoot/                modèle de numérotation BF{yy}{mm}-{0000}
-lib/babyfoot.lib.php           prepareHead UNIQUEMENT — pas un fourre-tout
+lib/babyfoot.lib.php           prepareHead + garde babyfootDocumentationIsEnabled() UNIQUEMENT
+lib/babyfoot_doc.lib.php       rendu de l'onglet doc — généré par `team-ai-scaffold docs`, ne pas éditer
 docs/configuration.md          source de l'onglet documentation en ligne
 ```
 
