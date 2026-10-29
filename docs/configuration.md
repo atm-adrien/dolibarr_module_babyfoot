@@ -62,31 +62,32 @@ Trois paramètres seulement, créés à l'activation du module et réglables dep
 
 ### Saisir une partie
 
-1. Ouvrir **Babyfoot > Parties > Créer une partie**.
+1. Ouvrir **Outils > Babyfoot > Créer une partie**.
 2. Choisir le mode : 1 contre 1 ou 2 contre 2.
 3. Sélectionner les joueurs de chaque camp. Les derniers coéquipiers et adversaires sont proposés
-   en tête de liste.
+   en tête de liste. Le bouton ⇄ entre les deux camps fait passer les joueurs du bleu au rouge et
+   inversement, les scores restant en place.
 4. Saisir les deux scores au clavier.
 5. Valider. Le camp vainqueur est déduit du score, il n'est jamais saisi.
 
 La partie est enregistrée à l'instant de la saisie : l'écran ne propose pas de choisir la date.
 Une partie oubliée se corrige depuis sa fiche, où la date reste modifiable. Après enregistrement,
-la variation d'Elo de chaque joueur s'affiche et le formulaire se réinitialise, prêt pour la
-partie suivante.
+la variation d'Elo de chaque joueur s'affiche. Les joueurs et le mode restent sélectionnés, seuls
+les scores sont vidés : la revanche se saisit sans tout resélectionner.
 
 > Note : le créateur d'une partie n'est pas obligé d'y avoir participé. Une personne peut saisir
 > pour tout le monde.
 
 ### Retrouver un joueur
 
-**Babyfoot > Joueurs > Liste des joueurs** est l'annuaire : un joueur y apparaît dès sa première
+**Outils > Babyfoot > Joueurs** est l'annuaire : un joueur y apparaît dès sa première
 partie. Le tri par défaut est alphabétique, chaque colonne est triable, et le nom mène à la fiche
 du joueur. Un joueur dont le compte Dolibarr a été supprimé reste listé, sous la forme `#identifiant` :
 son historique compte toujours dans le classement.
 
 ### Consulter le classement
 
-**Babyfoot > Classement** présente les trois classements sous forme d'onglets. Un filtre de période
+**Outils > Babyfoot > Classement** présente les trois classements sous forme d'onglets. Un filtre de période
 recalcule les compteurs sur 30 jours, 90 jours, l'année ou la totalité de l'historique. En période
 restreinte, l'Elo affiché reste l'Elo courant, complété par la variation sur la période.
 
@@ -104,6 +105,42 @@ annulée est conservée dans l'historique tout en devenant neutre pour tous les 
 > Attention : corriger ou supprimer une partie qui n'est pas la plus récente déclenche un recalcul
 > complet du classement, puisque l'Elo dépend de l'ordre chronologique des parties. L'opération est
 > transactionnelle : en cas d'échec, rien n'est modifié.
+
+### Piloter les parties par l'API REST
+
+Le module expose une API REST sous `/api/index.php/babyfoot`, à condition que le module
+**API REST** de Dolibarr soit activé. L'appelant s'authentifie avec la clé d'API d'un utilisateur,
+dont les droits Babyfoot s'appliquent.
+
+| Méthode | Chemin | Droit | Rôle |
+|---|---|---|---|
+| `GET` | `/babyfoot/games` | `read` | Liste filtrable : `mode`, `status`, `fk_user`, `date_start`, `date_end`, `sqlfilters` |
+| `GET` | `/babyfoot/games/{id}` | `read` | Une partie, ses joueurs et leur variation d'Elo |
+| `POST` | `/babyfoot/games` | `create` | Enregistre une partie, renvoie son identifiant |
+| `PUT` | `/babyfoot/games/{id}` | `modify_all` | Corrige les scores, la date ou les joueurs |
+
+Un joueur se désigne par son identifiant ou par son login ; l'identifiant l'emporte si les deux
+sont fournis. Les dates sont des timestamps ; sans `date_game`, la partie est datée de l'instant
+de l'appel.
+
+```json
+{
+  "mode": "2v2",
+  "score_team1": 10,
+  "score_team2": 7,
+  "players": [
+    {"fk_user": 12, "team": 1},
+    {"login": "jdoe", "team": 1},
+    {"fk_user": 15, "team": 2},
+    {"fk_user": 18, "team": 2}
+  ]
+}
+```
+
+Le camp `1` est le bleu, le camp `2` le rouge. En `PUT`, seuls les champs envoyés changent, et
+fournir `players` remplace tous les joueurs. Les règles sont les mêmes qu'à l'écran : une partie
+refusée renvoie une erreur 400 qui liste les règles enfreintes, et toute correction relance le
+recalcul complet du classement.
 
 ## Administration
 

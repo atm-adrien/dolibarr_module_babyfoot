@@ -31,6 +31,7 @@ class/
   ratingset.class.php          collection [fk_user][mode], chargement base OU mémoire
   ratingengine.class.php       SEULE classe autorisée à écrire dans babyfoot_rating
   stats/                       repositories de lecture seule (agrégats)
+  api_babyfoot.class.php       API REST /babyfoot/games — appelle Game, jamais de règle propre
 core/modules/modBabyfoot.class.php    descripteur
 core/modules/babyfoot/                modèle de numérotation BF{yy}{mm}-{0000}
 lib/babyfoot.lib.php           prepareHead + garde babyfootDocumentationIsEnabled() UNIQUEMENT
@@ -101,13 +102,14 @@ un tableau résolu, jamais `$conf`.
   passe à `img_object()`** — `modBabyfoot::$picto`, `Game::$picto`, `$boximg` du widget.
   Sans le `^`, `img_object()` préfixe `object_`, ce qui casse la détection FontAwesome
   d'`img_picto()` et affiche le picto générique. Dans les appels directs à `img_picto()`,
-  `load_fiche_titre()`, `dol_get_fiche_head()` et `print_barre_liste()`, écrire `'fa-futbol'` nu.
-- **`module_parts['icon']` doit être déclaré à la main.** L'icône du menu du bandeau ne
-  vient ni du `prefix` du menu ni de `$this->picto` : le thème lit `MAIN_MODULE_BABYFOOT_ICON`
-  et, faute de constante, écrase le glyphe par `div.mainmenu.babyfoot span::before { content: "\f249" }`.
-  `DolibarrModules::insert_module_parts()` déduit bien cette constante de `$this->picto`, mais
-  son test `/^fa-/` échoue sur `'^fa-futbol'`. La constante n'est écrite qu'à l'activation :
-  toute modification impose un cycle désactivation/réactivation pour être visible.
+  `load_fiche_titre()`, `dol_get_fiche_head()`, `print_barre_liste()` et dans le `prefix`
+  d'un menu gauche, écrire `'fa-futbol'` nu.
+- **Pas de menu dans le bandeau du haut** : tout est sous `fk_mainmenu=tools`, `mainmenu => 'tools'`.
+  Les menus ne sont écrits en base qu'à l'activation : toute modification impose un cycle
+  désactivation/réactivation pour être visible.
+- **La classe d'API s'appelle `Babyfoot`, pas `BabyfootApi`.** `api/index.php` déduit le nom de
+  classe du premier segment d'URL : c'est ce qui sert les routes sous `/babyfoot/...`.
+  Dans un test PHPUnit, renseigner `DolibarrApiAccess::$user` avant d'appeler une méthode.
 - **Un sous-menu gauche doit avoir une `position` supérieure à celle de son parent.**
   `Menubase::menuLoad()` insère un enfant uniquement si le couple
   (`fk_mainmenu`, `fk_leftmenu`) de son parent figure déjà dans la liste construite.
@@ -153,7 +155,6 @@ un tableau résolu, jamais `$conf`.
   L'imbrication `begin`/`commit` de DoliDB est comptée par références, mais un `rollback()` interne
   annule tout — comportement voulu : si le recalcul échoue, la partie ne s'enregistre pas.
 
-## Hors périmètre v1
+## Hors périmètre
 
-Saisie but par but, saisons, validation par l'adversaire, tournois, notifications, API REST
-(l'emplacement `class/api_babyfoot.class.php` est prévu mais non déclaré dans `module_parts`).
+Saisie but par but, saisons, validation par l'adversaire, tournois, notifications.

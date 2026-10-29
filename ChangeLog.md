@@ -1,5 +1,15 @@
 # ChangeLog — Module Babyfoot
 
+## 1.1.0
+
+- NEW : le module n'a plus d'entrée dans le bandeau du haut ; il est rangé dans le menu
+  latéral **Outils > Babyfoot**. Désactiver puis réactiver le module pour reconstruire le menu.
+- NEW : API REST `/babyfoot/games` en `GET`, `POST` et `PUT` pour lister, lire, créer et
+  corriger des parties depuis un outil tiers. Joueurs désignés par `fk_user` ou par `login`.
+- NEW : après l'enregistrement d'une partie, la saisie rapide garde les joueurs et ne vide
+  que les scores.
+- NEW : bouton d'inversion des camps bleu et rouge sur la saisie rapide.
+
 ## 1.0.0
 
 Première version.

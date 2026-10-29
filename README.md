@@ -28,7 +28,7 @@ utilisent la bibliothèque fournie par Dolibarr.
    externes.
 3. Attribuer les droits aux utilisateurs concernés.
 
-L'activation crée trois tables, les quatre droits, le menu, le widget de tableau de bord
+L'activation crée trois tables, les quatre droits, le menu **Outils > Babyfoot**, le widget de tableau de bord
 et les trois paramètres par défaut. **La désactivation ne supprime aucune donnée et ne
 réinitialise aucun paramétrage** : la réactivation retrouve l'existant intact.
 
@@ -44,6 +44,9 @@ réinitialise aucun paramétrage** : la réactivation retrouve l'existant intact
 | Statistiques | Totaux, duos, fannys, répartition horaire et hebdomadaire |
 | Widget | Top 5, rang personnel, trois dernières parties |
 | Configuration | Les trois paramètres, recalcul et vérification de cohérence |
+| API REST | Lister, lire, créer et corriger des parties depuis un outil tiers |
+
+Tous les écrans sont accessibles depuis **Outils > Babyfoot** dans le menu latéral.
 
 ## Droits
 
@@ -70,6 +73,13 @@ départ, pré-remplissage de l'utilisateur connecté et mode de jeu par défaut.
 La documentation complète de chaque paramètre est accessible en ligne depuis l'onglet
 Documentation du module.
 
+## API REST
+
+Nécessite le module **API REST** de Dolibarr. Points d'entrée sous `/api/index.php/babyfoot` :
+`GET /games`, `GET /games/{id}`, `POST /games`, `PUT /games/{id}`, soumis respectivement aux
+droits `read`, `read`, `create` et `modify_all`. Les joueurs se désignent par `fk_user` ou par
+`login`. Le détail et un exemple figurent dans l'onglet Documentation du module.
+
 ## Recalcul du classement
 
 L'Elo dépend de l'ordre chronologique des parties. Corriger ou supprimer une partie qui
@@ -94,10 +104,10 @@ cd htdocs/custom/babyfoot
 phpunit -c <dolibarr>/test/phpunit/phpunittest.xml test/phpunit/
 ```
 
-68 tests, 202 assertions. Les tests s'exécutent dans une transaction annulée à la fin :
+79 tests, 247 assertions. Les tests s'exécutent dans une transaction annulée à la fin :
 ils ne laissent aucune donnée derrière eux.
 
-## Hors périmètre de la version 1
+## Hors périmètre
 
 Ces points sont documentés comme évolutions possibles, pas comme des manques :
 
@@ -105,9 +115,7 @@ Ces points sont documentés comme évolutions possibles, pas comme des manques :
 - saisons ou championnats avec remise à zéro périodique ;
 - validation de la partie par l'adversaire ;
 - tournois, brackets, matchmaking ;
-- notifications par courriel ou messagerie ;
-- API REST — l'emplacement est prévu (`class/api_babyfoot.class.php`) mais n'est pas
-  déclaré dans le descripteur.
+- notifications par courriel ou messagerie.
 
 ## Licence
 
