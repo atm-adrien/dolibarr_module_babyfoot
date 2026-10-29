@@ -104,15 +104,15 @@ class BabyfootApiTest extends CommonClassTest
 	 */
 	private function validGameData(): array
 	{
-		return array(
+		return [
 			'mode' => '1v1',
 			'score_team1' => 10,
 			'score_team2' => 4,
-			'players' => array(
-				array('fk_user' => 1, 'team' => 1),
-				array('fk_user' => 2, 'team' => 2),
-			),
-		);
+			'players' => [
+				['fk_user' => 1, 'team' => 1],
+				['fk_user' => 2, 'team' => 2],
+			],
+		];
 	}
 
 	/**
@@ -139,7 +139,7 @@ class BabyfootApiTest extends CommonClassTest
 	 */
 	public function testPostThenGetGame()
 	{
-		$api = $this->apiAs(array('read', 'create'));
+		$api = $this->apiAs(['read', 'create']);
 
 		$id = $api->postGame($this->validGameData());
 		$this->assertGreaterThan(0, $id);
@@ -167,9 +167,9 @@ class BabyfootApiTest extends CommonClassTest
 		$other = new User($db);
 		$this->assertGreaterThan(0, $other->fetch(2));
 
-		$api = $this->apiAs(array('read', 'create'));
+		$api = $this->apiAs(['read', 'create']);
 		$data = $this->validGameData();
-		$data['players'][1] = array('login' => $other->login, 'team' => 2);
+		$data['players'][1] = ['login' => $other->login, 'team' => 2];
 
 		$game = $api->getGame($api->postGame($data));
 		$ids = array_column($game['players'], 'fk_user', 'team');
@@ -183,7 +183,7 @@ class BabyfootApiTest extends CommonClassTest
 	 */
 	public function testPostRejectsInvalidGames()
 	{
-		$api = $this->apiAs(array('read', 'create'));
+		$api = $this->apiAs(['read', 'create']);
 
 		$badScore = $this->validGameData();
 		$badScore['score_team1'] = 9;
@@ -192,7 +192,7 @@ class BabyfootApiTest extends CommonClassTest
 		}));
 
 		$unknownLogin = $this->validGameData();
-		$unknownLogin['players'][1] = array('login' => 'no-such-login-'.uniqid(), 'team' => 2);
+		$unknownLogin['players'][1] = ['login' => 'no-such-login-'.uniqid(), 'team' => 2];
 		$this->assertSame(400, $this->codeOf(function () use ($api, $unknownLogin) {
 			$api->postGame($unknownLogin);
 		}));
@@ -203,7 +203,7 @@ class BabyfootApiTest extends CommonClassTest
 			$api->postGame($badTeam);
 		}));
 
-		$readOnly = $this->apiAs(array('read'));
+		$readOnly = $this->apiAs(['read']);
 		$data = $this->validGameData();
 		$this->assertSame(403, $this->codeOf(function () use ($readOnly, $data) {
 			$readOnly->postGame($data);
@@ -217,14 +217,14 @@ class BabyfootApiTest extends CommonClassTest
 	 */
 	public function testPutUpdatesScoresAndKeepsPlayers()
 	{
-		$api = $this->apiAs(array('read', 'create', 'modify_all'));
+		$api = $this->apiAs(['read', 'create', 'modify_all']);
 		$id = $api->postGame($this->validGameData());
 
-		$game = $api->putGame($id, array('score_team1' => 3, 'score_team2' => 10));
+		$game = $api->putGame($id, ['score_team1' => 3, 'score_team2' => 10]);
 		$this->assertSame(3, $game['score_team1']);
 		$this->assertSame(2, $game['winner_team']);
 		$ids = array_column($game['players'], 'fk_user', 'team');
-		$this->assertSame(array(1 => 1, 2 => 2), $ids);
+		$this->assertSame([1 => 1, 2 => 2], $ids);
 	}
 
 	/**
@@ -234,11 +234,11 @@ class BabyfootApiTest extends CommonClassTest
 	 */
 	public function testPutAndGetGuards()
 	{
-		$creator = $this->apiAs(array('read', 'create'));
+		$creator = $this->apiAs(['read', 'create']);
 		$id = $creator->postGame($this->validGameData());
 
 		$this->assertSame(403, $this->codeOf(function () use ($creator, $id) {
-			$creator->putGame($id, array('score_team1' => 3, 'score_team2' => 10));
+			$creator->putGame($id, ['score_team1' => 3, 'score_team2' => 10]);
 		}));
 		$this->assertSame(404, $this->codeOf(function () use ($creator) {
 			$creator->getGame(999999999);
@@ -252,7 +252,7 @@ class BabyfootApiTest extends CommonClassTest
 	 */
 	public function testListFiltersByPlayer()
 	{
-		$api = $this->apiAs(array('read', 'create'));
+		$api = $this->apiAs(['read', 'create']);
 		$id = $api->postGame($this->validGameData());
 
 		$games = $api->listGames('t.date_game', 'DESC', 0, 0, '1v1', 1, 2);
@@ -269,9 +269,9 @@ class BabyfootApiTest extends CommonClassTest
 	 */
 	public function testMeExposesRightsAndConstants()
 	{
-		$me = $this->apiAs(array('read', 'create'))->getMe();
+		$me = $this->apiAs(['read', 'create'])->getMe();
 
-		$this->assertSame(array('read' => true, 'create' => true, 'modify_all' => false, 'admin' => false), $me['rights']);
+		$this->assertSame(['read' => true, 'create' => true, 'modify_all' => false, 'admin' => false], $me['rights']);
 		$this->assertSame(BabyfootConfig::SCORE_MAX, $me['score_max']);
 		$this->assertMatchesRegularExpression('/^\d+\.\d+\.\d+$/', $me['module_version']);
 	}
@@ -288,7 +288,7 @@ class BabyfootApiTest extends CommonClassTest
 		$other = new User($db);
 		$this->assertGreaterThan(0, $other->fetch(2));
 
-		$api = $this->apiAs(array('read', 'create'));
+		$api = $this->apiAs(['read', 'create']);
 		$id = $api->postGame($this->validGameData());
 
 		$game = $api->getGame($id);
@@ -310,7 +310,7 @@ class BabyfootApiTest extends CommonClassTest
 	 */
 	public function testCancelReopenDeleteLifecycle()
 	{
-		$api = $this->apiAs(array('read', 'create', 'modify_all'));
+		$api = $this->apiAs(['read', 'create', 'modify_all']);
 		$id = $api->postGame($this->validGameData());
 
 		$this->assertSame(400, $this->codeOf(function () use ($api, $id) {
@@ -327,7 +327,7 @@ class BabyfootApiTest extends CommonClassTest
 			$api->getGame($id);
 		}));
 
-		$creator = $this->apiAs(array('read', 'create'));
+		$creator = $this->apiAs(['read', 'create']);
 		$other = $creator->postGame($this->validGameData());
 		$this->assertSame(403, $this->codeOf(function () use ($creator, $other) {
 			$creator->deleteGame($other);
@@ -348,7 +348,7 @@ class BabyfootApiTest extends CommonClassTest
 		$newcomer->lastname = 'Newcomer';
 		$this->assertGreaterThan(0, $newcomer->create($user));
 
-		$players = $this->apiAs(array('read'))->listPlayers();
+		$players = $this->apiAs(['read'])->listPlayers();
 		$byId = array_column($players, null, 'fk_user');
 		$this->assertArrayHasKey($newcomer->id, $byId);
 		$this->assertNull($byId[$newcomer->id]['elo']);
@@ -362,7 +362,7 @@ class BabyfootApiTest extends CommonClassTest
 	 */
 	public function testPlayerCardAndEloHistory()
 	{
-		$api = $this->apiAs(array('read', 'create'));
+		$api = $this->apiAs(['read', 'create']);
 		$api->postGame($this->validGameData());
 
 		$card = $api->getPlayer(2);
@@ -388,7 +388,7 @@ class BabyfootApiTest extends CommonClassTest
 	 */
 	public function testRankingAndStats()
 	{
-		$api = $this->apiAs(array('read', 'create'));
+		$api = $this->apiAs(['read', 'create']);
 		$api->postGame($this->validGameData());
 
 		$ranking = $api->getRanking(BabyfootConfig::MODE_ALL, '30');
@@ -407,6 +407,100 @@ class BabyfootApiTest extends CommonClassTest
 		}));
 		$this->assertSame(400, $this->codeOf(function () use ($api) {
 			$api->getRanking(BabyfootConfig::MODE_ALL, 'week');
+		}));
+	}
+
+	/**
+	 * Create a user and move it into another entity, or disable it.
+	 *
+	 * @param	string	$change		'foreign' to move it to another entity, 'disabled' to disable it
+	 * @return	int					Id of the user
+	 */
+	private function makeUnplayableUser(string $change): int
+	{
+		global $db, $user;
+
+		$other = new User($db);
+		$other->login = 'bfapitest'.uniqid();
+		$other->lastname = 'Unplayable';
+		$id = $other->create($user);
+		$this->assertGreaterThan(0, $id);
+
+		$set = ($change === 'foreign') ? "entity = 999999" : "statut = 0";
+		$this->assertNotFalse($db->query("UPDATE ".$db->prefix()."user SET ".$set." WHERE rowid = ".((int) $id)));
+
+		return (int) $id;
+	}
+
+	/**
+	 * A user of another entity is invisible: no card, and it cannot play.
+	 *
+	 * @return void
+	 */
+	public function testUserOfAnotherEntityIsInvisible()
+	{
+		$foreignId = $this->makeUnplayableUser('foreign');
+		$api = $this->apiAs(['read', 'create']);
+
+		$this->assertSame(404, $this->codeOf(function () use ($api, $foreignId) {
+			$api->getPlayer($foreignId);
+		}));
+
+		$data = $this->validGameData();
+		$data['players'][1] = ['fk_user' => $foreignId, 'team' => 2];
+		$this->assertSame(400, $this->codeOf(function () use ($api, $data) {
+			$api->postGame($data);
+		}));
+	}
+
+	/**
+	 * A disabled user cannot be put in a game, as on the quick entry screen.
+	 *
+	 * @return void
+	 */
+	public function testDisabledUserCannotPlay()
+	{
+		$disabledId = $this->makeUnplayableUser('disabled');
+		$api = $this->apiAs(['read', 'create']);
+
+		$data = $this->validGameData();
+		$data['players'][1] = ['fk_user' => $disabledId, 'team' => 2];
+		$this->assertSame(400, $this->codeOf(function () use ($api, $data) {
+			$api->postGame($data);
+		}));
+	}
+
+	/**
+	 * Sorting on a column outside the whitelist is a 400, not a database error.
+	 *
+	 * @return void
+	 */
+	public function testUnknownSortFieldIsRejected()
+	{
+		$api = $this->apiAs(['read']);
+
+		$this->assertSame(400, $this->codeOf(function () use ($api) {
+			$api->listGames('u.pass');
+		}));
+		$this->assertSame(0, $this->codeOf(function () use ($api) {
+			$api->listGames('t.date_game,t.rowid', 'DESC,DESC', 1);
+		}));
+	}
+
+	/**
+	 * GET /me refuses to answer while the module is disabled.
+	 *
+	 * @return void
+	 */
+	public function testMeRefusedWhenModuleDisabled()
+	{
+		global $conf;
+
+		$api = $this->apiAs(['read']);
+		unset($conf->modules['babyfoot']);
+
+		$this->assertSame(403, $this->codeOf(function () use ($api) {
+			$api->getMe();
 		}));
 	}
 }

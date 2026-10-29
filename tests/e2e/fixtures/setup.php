@@ -55,15 +55,15 @@ if ($runner->update($user) < 0) {
 	exit(1);
 }
 
-$players = array();
+$players = [];
 for ($i = 1; $i <= 4; $i++) {
-	$players['p'.$i] = array('id' => createE2eUser('p'.$i), 'label' => 'E2EBabyfoot p'.$i);
+	$players['p'.$i] = ['id' => createE2eUser('p'.$i), 'label' => 'E2EBabyfoot p'.$i];
 }
 
-echo json_encode(array(
+echo json_encode([
 	'login' => $runner->login,
 	'password' => $password,
 	'api_key' => $apiKey,
 	'runner_id' => $runnerId,
 	'players' => $players,
-)), "\n";
+]), "\n";

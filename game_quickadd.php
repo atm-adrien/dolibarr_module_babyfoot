@@ -183,7 +183,7 @@ print '</div>';
 print '<div class="babyfoot-teams">';
 for ($team = 1; $team <= 2; $team++) {
 	if ($team === 2) {
-		print '<button type="button" class="babyfoot-vs babyfoot-swap" onclick="babyfootSwapTeams('.$playersPerTeam.')"';
+		print '<button type="button" class="babyfoot-vs babyfoot-swap" data-players-per-team="'.((int) $playersPerTeam).'"';
 		print ' title="'.dol_escape_htmltag($langs->trans('BabyfootSwapTeams')).'" aria-label="'.dol_escape_htmltag($langs->trans('BabyfootSwapTeams')).'">';
 		print img_picto('', 'fa-exchange-alt');
 		print '</button>';
@@ -236,7 +236,7 @@ for ($team = 1; $team <= 2; $team++) {
 		$url = dol_buildpath('/babyfoot/ajax/playersuggest.php', 1);
 		print '	jQuery.getJSON("'.dol_escape_js($url).'", {mode: "'.dol_escape_js($mode).'", relation: "'.$relation.'"},';
 		print '		function (data) {';
-		print '			var ids = [];';
+		print '			const ids = [];';
 		print '			jQuery.each(data, function (i, row) { ids.push(row.id); });';
 		print '			babyfootPromoteSuggestions("player_'.$team.'_'.$slot.'", ids);';
 		print '		}).fail(function () { /* keep the server side list as is */ });';

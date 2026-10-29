@@ -66,14 +66,14 @@ header('Cache-Control: max-age=86400, public, must-revalidate');
  * @return {void}
  */
 function babyfootPromoteSuggestions(selectId, ids) {
-	var select = jQuery('#' + selectId);
+	const select = jQuery('#' + selectId);
 	if (select.length === 0 || !ids || ids.length === 0) {
 		return;
 	}
 
-	var current = select.val();
-	for (var i = ids.length - 1; i >= 0; i--) {
-		var option = select.find('option[value="' + ids[i] + '"]');
+	const current = select.val();
+	for (let i = ids.length - 1; i >= 0; i--) {
+		const option = select.find('option[value="' + ids[i] + '"]');
 		if (option.length > 0) {
 			select.prepend(option);
 		}
@@ -88,14 +88,18 @@ function babyfootPromoteSuggestions(selectId, ids) {
  * @return {void}
  */
 function babyfootSwapTeams(playersPerTeam) {
-	for (var slot = 1; slot <= playersPerTeam; slot++) {
-		var blue = jQuery('#player_1_' + slot);
-		var red = jQuery('#player_2_' + slot);
-		var blueValue = blue.val();
+	for (let slot = 1; slot <= playersPerTeam; slot++) {
+		const blue = jQuery('#player_1_' + slot);
+		const red = jQuery('#player_2_' + slot);
+		const blueValue = blue.val();
 		blue.val(red.val()).trigger('change');
 		red.val(blueValue).trigger('change');
 	}
 }
+
+jQuery(document).on('click', '.babyfoot-swap', function () {
+	babyfootSwapTeams(parseInt(jQuery(this).data('players-per-team'), 10));
+});
 
 /**
  * Toggle a collapsed block.

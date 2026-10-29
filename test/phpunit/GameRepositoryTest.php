@@ -56,7 +56,7 @@ class GameRepositoryTest extends CommonClassTest
 		$game->mode = '1v1';
 		$game->score_team1 = 10;
 		$game->score_team2 = 3;
-		$game->setPlayers(array(array('fk_user' => 1, 'team' => 1), array('fk_user' => 2, 'team' => 2)));
+		$game->setPlayers([['fk_user' => 1, 'team' => 1], ['fk_user' => 2, 'team' => 2]]);
 		$id = $game->create($user);
 		$this->assertGreaterThan(0, $id, 'create() failed: '.$game->error);
 
@@ -64,13 +64,13 @@ class GameRepositoryTest extends CommonClassTest
 	}
 
 	/**
-	 * @return	GameRepository	Repository on the visible entities
+	 * @return	GameRepository	Repository on the current entity
 	 */
 	private function repository(): GameRepository
 	{
-		global $db;
+		global $db, $conf;
 
-		return new GameRepository($db, getEntity('babyfootgame'));
+		return new GameRepository($db, (int) $conf->entity);
 	}
 
 	/**
@@ -83,8 +83,8 @@ class GameRepositoryTest extends CommonClassTest
 		$first = $this->storeGame();
 		$second = $this->storeGame();
 
-		$games = $this->repository()->getByIds(array($second, 999999999, $first));
-		$this->assertSame(array($second, $first), array_column($games, 'id'));
+		$games = $this->repository()->getByIds([$second, 999999999, $first]);
+		$this->assertSame([$second, $first], array_column($games, 'id'));
 		foreach ($games as $game) {
 			$this->assertCount(2, $game['players']);
 			foreach ($game['players'] as $player) {
@@ -106,8 +106,8 @@ class GameRepositoryTest extends CommonClassTest
 		$other = new User($db);
 		$this->assertGreaterThan(0, $other->fetch(2));
 
-		$this->assertContains($id, array_column($this->repository()->search(array('search' => $other->login), 't.rowid', 'DESC', 0), 'id'));
-		$this->assertSame(array(), $this->repository()->search(array('search' => 'no-such-player-'.uniqid()), 't.rowid', 'DESC', 0));
+		$this->assertContains($id, array_column($this->repository()->search(['search' => $other->login], 't.rowid', 'DESC', 0), 'id'));
+		$this->assertSame([], $this->repository()->search(['search' => 'no-such-player-'.uniqid()], 't.rowid', 'DESC', 0));
 	}
 
 	/**
@@ -117,7 +117,7 @@ class GameRepositoryTest extends CommonClassTest
 	 */
 	public function testPlayerLabelOfMissingUser()
 	{
-		$labels = $this->repository()->getPlayerLabels(array(999999999));
+		$labels = $this->repository()->getPlayerLabels([999999999]);
 
 		$this->assertSame('#999999999', $labels[999999999]['name']);
 	}

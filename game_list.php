@@ -88,7 +88,7 @@ if (!in_array($sortfield, $allowedSortFields, true)) {
  * View
  */
 
-$sqlWhere = " WHERE g.entity IN (".getEntity('babyfootgame').")";
+$sqlWhere = " WHERE g.entity = ".((int) $conf->entity);
 if ($searchDateFrom > 0) {
 	$sqlWhere .= " AND g.date_game >= '".$db->idate($searchDateFrom)."'";
 }

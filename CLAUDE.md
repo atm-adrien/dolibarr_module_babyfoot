@@ -117,6 +117,8 @@ un tableau résolu, jamais `$conf`.
 - **Les périodes passent par `BabyfootConfig::periods()` / `periodStart()`.** Leurs codes
   `'30'`, `'90'`, `'365'` deviennent des clés **entières** dans un tableau PHP : comparer avec
   `(string) $key === $period`, sinon aucune période n'est jamais sélectionnée.
+- **`User::fetch($id)` ne filtre pas l'entité** (seule la recherche par login le fait). Pour
+  vérifier qu'un utilisateur appartient à l'entité, passer par `RankingRepository::findUserId()`.
 - **La classe d'API s'appelle `Babyfoot`, pas `BabyfootApi`.** `api/index.php` déduit le nom de
   classe du premier segment d'URL : c'est ce qui sert les routes sous `/babyfoot/...`.
   Dans un test PHPUnit, renseigner `DolibarrApiAccess::$user` avant d'appeler une méthode.

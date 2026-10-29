@@ -13,10 +13,10 @@ $gameFilter = "SELECT gp.fk_game FROM ".$db->prefix()."babyfoot_game_player AS g
 $gameFilter .= " WHERE gp.fk_user IN (".$userFilter.")";
 
 $db->begin();
-$sqls = array(
+$sqls = [
 	"DELETE FROM ".$db->prefix()."babyfoot_game WHERE rowid IN (SELECT fk_game FROM (".$gameFilter.") AS g)",
 	"DELETE FROM ".$db->prefix()."babyfoot_game_player WHERE fk_game NOT IN (SELECT rowid FROM ".$db->prefix()."babyfoot_game)",
-);
+];
 foreach ($sqls as $sql) {
 	if (!$db->query($sql)) {
 		fwrite(STDERR, "game cleanup failed: ".$db->lasterror()."\n");
@@ -31,7 +31,7 @@ if (!$resql) {
 	fwrite(STDERR, "user lookup failed: ".$db->lasterror()."\n");
 	exit(1);
 }
-$ids = array();
+$ids = [];
 while ($obj = $db->fetch_object($resql)) {
 	$ids[] = (int) $obj->rowid;
 }
@@ -55,4 +55,4 @@ if (isModEnabled('babyfoot')) {
 	}
 }
 
-echo json_encode(array('deleted_users' => count($ids))), "\n";
+echo json_encode(['deleted_users' => count($ids)]), "\n";

@@ -12,6 +12,7 @@
 - NEW : filtre de période (30 jours, 90 jours, 1 an, tout) sur l'écran Statistiques ; les
   méthodes de `GlobalStatsRepository` acceptent une période.
 - FIX : la période choisie n'était jamais mise en évidence dans le sélecteur du classement.
+- FIX : la liste des parties filtre explicitement sur l'entité courante.
 - NEW : après l'enregistrement d'une partie, la saisie rapide garde les joueurs et ne vide
   que les scores.
 - NEW : bouton d'inversion des camps bleu et rouge sur la saisie rapide.

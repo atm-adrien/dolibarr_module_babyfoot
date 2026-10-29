@@ -22,9 +22,9 @@ $count = $db->num_rows($resql);
 $last = $db->fetch_object($resql);
 $db->free($resql);
 
-$result = array('count' => $count, 'last' => null);
+$result = ['count' => $count, 'last' => null];
 if ($last) {
-	$players = array();
+	$players = [];
 	$sql = "SELECT fk_user, team FROM ".$db->prefix()."babyfoot_game_player WHERE fk_game = ".((int) $last->rowid);
 	$resql = $db->query($sql);
 	if (!$resql) {
@@ -36,13 +36,13 @@ if ($last) {
 	}
 	$db->free($resql);
 
-	$result['last'] = array(
+	$result['last'] = [
 		'id' => (int) $last->rowid,
 		'mode' => $last->mode,
 		'score_team1' => (int) $last->score_team1,
 		'score_team2' => (int) $last->score_team2,
 		'players' => $players,
-	);
+	];
 }
 
 echo json_encode($result), "\n";

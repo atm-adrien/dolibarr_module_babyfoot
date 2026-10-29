@@ -30,19 +30,19 @@ class GameRepository
 	/** @var DoliDB Database handler */
 	private $db;
 
-	/** @var string Entities the games may belong to, as returned by getEntity() */
-	private $entities;
+	/** @var int Entity the games belong to: games are never shared between entities */
+	private $entity;
 
 	/**
 	 * Constructor
 	 *
 	 * @param	DoliDB	$db			Database handler
-	 * @param	string	$entities	Comma separated entity ids, as returned by getEntity('babyfootgame')
+	 * @param	int		$entity		Entity to read the games of
 	 */
-	public function __construct(DoliDB $db, string $entities)
+	public function __construct(DoliDB $db, int $entity)
 	{
 		$this->db = $db;
-		$this->entities = implode(',', array_map('intval', explode(',', $entities)));
+		$this->entity = $entity;
 	}
 
 	/**
@@ -60,7 +60,7 @@ class GameRepository
 	public function search(array $filters, string $sortfield = 't.date_game', string $sortorder = 'DESC', int $limit = 100, int $page = 0, string $extraSql = ''): array
 	{
 		$sql = "SELECT t.rowid FROM ".$this->db->prefix()."babyfoot_game AS t";
-		$sql .= " WHERE t.entity IN (".$this->entities.")";
+		$sql .= " WHERE t.entity = ".((int) $this->entity);
 		if (!empty($filters['mode'])) {
 			$sql .= " AND t.mode = '".$this->db->escape((string) $filters['mode'])."'";
 		}
@@ -97,7 +97,7 @@ class GameRepository
 			dol_syslog('GameRepository::search '.$this->db->lasterror(), LOG_ERR);
 			throw new Exception('GameRepository::search failed');
 		}
-		$ids = array();
+		$ids = [];
 		while ($obj = $this->db->fetch_object($resql)) {
 			$ids[] = (int) $obj->rowid;
 		}
@@ -117,23 +117,23 @@ class GameRepository
 	{
 		$ids = array_values(array_filter(array_map('intval', $ids)));
 		if (empty($ids)) {
-			return array();
+			return [];
 		}
 
 		$sql = "SELECT t.rowid, t.ref, t.date_game, t.mode, t.score_team1, t.score_team2, t.winner_team,";
 		$sql .= " t.status, t.fk_user_creat, t.date_creation";
 		$sql .= " FROM ".$this->db->prefix()."babyfoot_game AS t";
 		$sql .= " WHERE t.rowid IN (".implode(',', $ids).")";
-		$sql .= " AND t.entity IN (".$this->entities.")";
+		$sql .= " AND t.entity = ".((int) $this->entity);
 
 		$resql = $this->db->query($sql);
 		if (!$resql) {
 			dol_syslog('GameRepository::getByIds '.$this->db->lasterror(), LOG_ERR);
 			throw new Exception('GameRepository::getByIds failed');
 		}
-		$games = array();
+		$games = [];
 		while ($obj = $this->db->fetch_object($resql)) {
-			$games[(int) $obj->rowid] = array(
+			$games[(int) $obj->rowid] = [
 				'id' => (int) $obj->rowid,
 				'ref' => (string) $obj->ref,
 				'date_game' => (int) $this->db->jdate($obj->date_game),
@@ -144,13 +144,13 @@ class GameRepository
 				'status' => (int) $obj->status,
 				'fk_user_creat' => (int) $obj->fk_user_creat,
 				'date_creation' => (int) $this->db->jdate($obj->date_creation),
-				'players' => array(),
-			);
+				'players' => [],
+			];
 		}
 		$this->db->free($resql);
 
 		if (empty($games)) {
-			return array();
+			return [];
 		}
 
 		$sql = "SELECT gp.fk_game, gp.fk_user, gp.team, gp.is_winner, gp.elo_before, gp.elo_after, gp.elo_delta,";
@@ -169,7 +169,7 @@ class GameRepository
 		while ($obj = $this->db->fetch_object($resql)) {
 			$games[(int) $obj->fk_game]['players'][] = array_merge(
 				$this->label((int) $obj->fk_user, $obj->login, $obj->firstname, $obj->lastname),
-				array(
+				[
 					'team' => (int) $obj->team,
 					'is_winner' => (int) $obj->is_winner,
 					'elo_before' => (int) $obj->elo_before,
@@ -178,12 +178,12 @@ class GameRepository
 					'elo_all_before' => (int) $obj->elo_all_before,
 					'elo_all_after' => (int) $obj->elo_all_after,
 					'elo_all_delta' => (int) $obj->elo_all_delta,
-				)
+				]
 			);
 		}
 		$this->db->free($resql);
 
-		$ordered = array();
+		$ordered = [];
 		foreach ($ids as $id) {
 			if (isset($games[$id])) {
 				$ordered[] = $games[$id];
@@ -206,7 +206,7 @@ class GameRepository
 	public function getPlayerLabels(array $userIds): array
 	{
 		$userIds = array_values(array_unique(array_filter(array_map('intval', $userIds))));
-		$labels = array();
+		$labels = [];
 		if (empty($userIds)) {
 			return $labels;
 		}
@@ -247,12 +247,12 @@ class GameRepository
 	{
 		$name = trim(dolGetFirstLastname((string) $firstname, (string) $lastname));
 
-		return array(
+		return [
 			'fk_user' => $userId,
 			'login' => (string) $login,
 			'firstname' => (string) $firstname,
 			'lastname' => (string) $lastname,
 			'name' => ($name !== '') ? $name : (($login !== null && $login !== '') ? (string) $login : '#'.$userId),
-		);
+		];
 	}
 }

@@ -205,6 +205,49 @@ class RankingRepository
 	}
 
 	/**
+	 * Find a user of the given entities by id, or by login when no id is given.
+	 *
+	 * User::fetch() by id ignores the entity: this lookup is what keeps the users
+	 * of another entity out of the API.
+	 *
+	 * @param	string	$userEntities		Comma separated entity ids, as returned by getEntity('user')
+	 * @param	int		$userId				User id, 0 to search by login
+	 * @param	string	$login				Login, used only when $userId is 0
+	 * @param	bool	$activeInternalOnly	true to also require an active internal user, as getActiveInternalPlayers()
+	 * @return	int							User id, 0 when no user matches
+	 * @throws	Exception	On a database error
+	 */
+	public function findUserId(string $userEntities, int $userId, string $login, bool $activeInternalOnly): int
+	{
+		if ($userId <= 0 && $login === '') {
+			return 0;
+		}
+		$entities = implode(',', array_map('intval', explode(',', $userEntities)));
+
+		$sql = "SELECT u.rowid FROM ".$this->db->prefix()."user as u";
+		$sql .= " WHERE u.entity IN (".$entities.")";
+		if ($userId > 0) {
+			$sql .= " AND u.rowid = ".((int) $userId);
+		} else {
+			$sql .= " AND u.login = '".$this->db->escape($login)."'";
+		}
+		if ($activeInternalOnly) {
+			$sql .= " AND u.statut = 1";
+			$sql .= " AND (u.fk_soc IS NULL OR u.fk_soc = 0)";
+		}
+
+		$resql = $this->db->query($sql);
+		if (!$resql) {
+			dol_syslog('RankingRepository::findUserId '.$this->db->lasterror(), LOG_ERR);
+			throw new Exception('RankingRepository::findUserId failed');
+		}
+		$obj = $this->db->fetch_object($resql);
+		$this->db->free($resql);
+
+		return $obj ? (int) $obj->rowid : 0;
+	}
+
+	/**
 	 * Return the rank variation of every player since their own last game (D12).
 	 *
 	 * The reference is the rank the player held just before their last game: the

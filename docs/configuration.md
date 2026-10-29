@@ -135,11 +135,13 @@ dont les droits Babyfoot s'appliquent.
 | `GET` | `/babyfoot/ranking` | `read` | Classement, paramètres `mode` et `period` |
 | `GET` | `/babyfoot/stats` | `read` | Statistiques collectives, paramètre `period` |
 
-`search` cherche dans la référence de la partie et dans le nom, le prénom ou le login de ses
+`sortfield` accepte `t.rowid`, `t.ref`, `t.date_game`, `t.mode`, `t.status`, `t.score_team1`,
+`t.score_team2` et `t.date_creation`, seuls ou séparés par des virgules. `search` cherche dans la référence de la partie et dans le nom, le prénom ou le login de ses
 joueurs. `period` vaut `30`, `90`, `365` (jours) ou `all` ; toute autre valeur est refusée.
 
 Un joueur se désigne par son identifiant ou par son login ; l'identifiant l'emporte si les deux
-sont fournis. Les dates sont des timestamps ; sans `date_game`, la partie est datée de l'instant
+sont fournis. Comme à l'écran, seul un utilisateur actif et interne de l'entité peut jouer : un
+compte désactivé, externe ou d'une autre entité est refusé avec une erreur 400. Les dates sont des timestamps ; sans `date_game`, la partie est datée de l'instant
 de l'appel.
 
 ```json

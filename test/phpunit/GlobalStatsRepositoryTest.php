@@ -58,13 +58,13 @@ class GlobalStatsRepositoryTest extends CommonClassTest
 		$db->query("DELETE FROM ".$db->prefix()."babyfoot_game WHERE entity = ".((int) $conf->entity));
 		$db->query("DELETE FROM ".$db->prefix()."babyfoot_rating WHERE entity = ".((int) $conf->entity));
 
-		foreach (array(array(5, 10, 100 * 86400), array(10, 0, 60)) as $spec) {
+		foreach ([[5, 10, 100 * 86400], [10, 0, 60]] as $spec) {
 			$game = new Game($db);
 			$game->date_game = dol_now() - $spec[2];
 			$game->mode = '1v1';
 			$game->score_team1 = $spec[0];
 			$game->score_team2 = $spec[1];
-			$game->setPlayers(array(array('fk_user' => 1, 'team' => 1), array('fk_user' => 2, 'team' => 2)));
+			$game->setPlayers([['fk_user' => 1, 'team' => 1], ['fk_user' => 2, 'team' => 2]]);
 			$this->assertGreaterThan(0, $game->create($user), 'create() failed: '.$game->error);
 		}
 
@@ -98,10 +98,10 @@ class GlobalStatsRepositoryTest extends CommonClassTest
 	{
 		$repository = $this->seed();
 
-		$expected = array(
-			array('fk_user' => 1, 'given' => 1, 'taken' => 0),
-			array('fk_user' => 2, 'given' => 0, 'taken' => 1),
-		);
+		$expected = [
+			['fk_user' => 1, 'given' => 1, 'taken' => 0],
+			['fk_user' => 2, 'given' => 0, 'taken' => 1],
+		];
 		$this->assertSame($expected, $repository->getFannyTable());
 		$this->assertSame($expected, $repository->getFannyTable(dol_now() - 30 * 86400));
 	}
