@@ -13,6 +13,12 @@
   méthodes de `GlobalStatsRepository` acceptent une période.
 - FIX : la période choisie n'était jamais mise en évidence dans le sélecteur du classement.
 - FIX : la liste des parties filtre explicitement sur l'entité courante.
+- FIX : API : `GET /players/0` renvoyait la ligne de verrou du classement ; en mode
+  transverse de Multicompany, `/players` et `POST /games` acceptaient les utilisateurs
+  n'appartenant à aucun groupe de l'entité ; `GET /games` est plafonné à 500 parties par page.
+- NEW : API : nom de l'auteur (`user_creat_name`) sur les parties, rang et nombre de classés par
+  mode sur la fiche joueur, `limit` (30 par défaut) et `fk_game` sur la courbe d'Elo,
+  `prefill_current_user` sur `/me`.
 - NEW : après l'enregistrement d'une partie, la saisie rapide garde les joueurs et ne vide
   que les scores.
 - NEW : bouton d'inversion des camps bleu et rouge sur la saisie rapide.

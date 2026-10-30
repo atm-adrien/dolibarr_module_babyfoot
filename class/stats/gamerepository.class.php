@@ -27,6 +27,9 @@
  */
 class GameRepository
 {
+	/** @var int Largest page search() returns */
+	const MAX_LIMIT = 500;
+
 	/** @var DoliDB Database handler */
 	private $db;
 
@@ -51,7 +54,7 @@ class GameRepository
 	 * @param	array{mode?:string,status?:int,fk_user?:int,date_start?:int,date_end?:int,search?:string}	$filters	Filters, all optional
 	 * @param	string	$sortfield		Sort field, on the alias t of the game table
 	 * @param	string	$sortorder		'ASC' or 'DESC'
-	 * @param	int		$limit			Page size, 0 for no limit
+	 * @param	int		$limit			Page size, capped to MAX_LIMIT, 0 meaning MAX_LIMIT
 	 * @param	int		$page			Page number, from 0
 	 * @param	string	$extraSql		SQL fragment starting with AND, already sanitized by forgeSQLFromUniversalSearchCriteria()
 	 * @return	array<int,array<string,mixed>>	Games with their players, in the requested order
@@ -88,9 +91,8 @@ class GameRepository
 		}
 		$sql .= $extraSql;
 		$sql .= $this->db->order($sortfield, $sortorder);
-		if ($limit > 0) {
-			$sql .= $this->db->plimit($limit, $limit * max(0, $page));
-		}
+		$limit = ($limit > 0) ? min($limit, self::MAX_LIMIT) : self::MAX_LIMIT;
+		$sql .= $this->db->plimit($limit, $limit * max(0, $page));
 
 		$resql = $this->db->query($sql);
 		if (!$resql) {
@@ -121,8 +123,10 @@ class GameRepository
 		}
 
 		$sql = "SELECT t.rowid, t.ref, t.date_game, t.mode, t.score_team1, t.score_team2, t.winner_team,";
-		$sql .= " t.status, t.fk_user_creat, t.date_creation";
+		$sql .= " t.status, t.fk_user_creat, t.date_creation,";
+		$sql .= " uc.login AS creat_login, uc.firstname AS creat_firstname, uc.lastname AS creat_lastname";
 		$sql .= " FROM ".$this->db->prefix()."babyfoot_game AS t";
+		$sql .= " LEFT JOIN ".$this->db->prefix()."user AS uc ON uc.rowid = t.fk_user_creat";
 		$sql .= " WHERE t.rowid IN (".implode(',', $ids).")";
 		$sql .= " AND t.entity = ".((int) $this->entity);
 
@@ -143,6 +147,7 @@ class GameRepository
 				'winner_team' => is_null($obj->winner_team) ? null : (int) $obj->winner_team,
 				'status' => (int) $obj->status,
 				'fk_user_creat' => (int) $obj->fk_user_creat,
+				'user_creat_name' => $this->label((int) $obj->fk_user_creat, $obj->creat_login, $obj->creat_firstname, $obj->creat_lastname)['name'],
 				'date_creation' => (int) $this->db->jdate($obj->date_creation),
 				'players' => [],
 			];

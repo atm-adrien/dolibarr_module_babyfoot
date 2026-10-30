@@ -108,6 +108,7 @@ class Babyfoot extends DolibarrApi
 			'rating_modes' => BabyfootConfig::ratingModes(),
 			'periods' => BabyfootConfig::periods(),
 			'default_mode' => $config['default_mode'],
+			'prefill_current_user' => (bool) $config['prefill_current_user'],
 		];
 	}
 
@@ -116,7 +117,7 @@ class Babyfoot extends DolibarrApi
 	 *
 	 * @param	string	$sortfield	Sort field, or several separated by a comma, among t.rowid, t.ref, t.date_game, t.mode, t.status, t.score_team1, t.score_team2, t.date_creation
 	 * @param	string	$sortorder	Sort order
-	 * @param	int		$limit		Limit for list
+	 * @param	int		$limit		Limit for list, at most 500, 0 meaning 500
 	 * @param	int		$page		Page number
 	 * @param	string	$mode		Game mode filter, '1v1' or '2v2'
 	 * @param	int		$status		Status filter: 0 = cancelled, 1 = validated, -1 = all
@@ -382,7 +383,7 @@ class Babyfoot extends DolibarrApi
 	}
 
 	/**
-	 * Get a player card: ratings per mode, teammates and opponents, last games
+	 * Get a player card: ratings per mode with the rank, teammates and opponents, last games
 	 *
 	 * @param	int		$id		Id of the Dolibarr user
 	 * @return	array<string,mixed>	Player card
@@ -401,6 +402,14 @@ class Babyfoot extends DolibarrApi
 		$stats = new PlayerStatsRepository($this->db, $this->entity());
 		$ratings = $stats->getRatings($id);
 		$this->requirePlayer($id, $ratings);
+
+		$repository = $this->rankingRepository();
+		foreach ($ratings as $mode => $rating) {
+			$ranking = $repository->getRanking((string) $mode, 0, 0, 0);
+			$position = array_search($id, array_map('intval', array_column($ranking, 'fk_user')), true);
+			$ratings[$mode]['rank'] = ($position === false) ? null : $position + 1;
+			$ratings[$mode]['nb_players'] = count($ranking);
+		}
 
 		$relations = [
 			'best_teammate' => $stats->getBestTeammate($id),
@@ -433,7 +442,8 @@ class Babyfoot extends DolibarrApi
 	 *
 	 * @param	int		$id		Id of the Dolibarr user
 	 * @param	string	$mode	'1v1', '2v2' or 'all'
-	 * @return	array<int,array{date:int,elo:int}>	Elo after each game
+	 * @param	int		$limit	Keep only the last games, 0 for the whole history
+	 * @return	array<int,array{date:int,elo:int,fk_game:int}>	Elo after each game
 	 *
 	 * @url GET /players/{id}/elo-history
 	 *
@@ -441,7 +451,7 @@ class Babyfoot extends DolibarrApi
 	 * @throws	RestException	403 Access denied
 	 * @throws	RestException	404 Player not found
 	 */
-	public function getPlayerEloHistory($id, $mode = 'all')
+	public function getPlayerEloHistory($id, $mode = 'all', $limit = 30)
 	{
 		$this->requireRight('read');
 		if (!in_array($mode, BabyfootConfig::ratingModes(), true)) {
@@ -452,7 +462,7 @@ class Babyfoot extends DolibarrApi
 		$stats = new PlayerStatsRepository($this->db, $this->entity());
 		$this->requirePlayer($id, $stats->getRatings($id));
 
-		return $stats->getEloHistory($id, (string) $mode);
+		return $stats->getEloHistory($id, (string) $mode, max(0, (int) $limit));
 	}
 
 	/**
@@ -601,6 +611,9 @@ class Babyfoot extends DolibarrApi
 	 */
 	private function requirePlayer(int $id, array $ratings): void
 	{
+		if ($id <= 0) {
+			throw new RestException(404, 'Player not found');
+		}
 		if (!empty($ratings)) {
 			return;
 		}

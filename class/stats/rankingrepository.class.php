@@ -165,7 +165,6 @@ class RankingRepository
 	public function getActiveInternalPlayers(string $userEntities): array
 	{
 		$rows = array();
-		$entities = implode(',', array_map('intval', explode(',', $userEntities)));
 
 		$sql = "SELECT u.rowid, u.login, u.firstname, u.lastname,";
 		$sql .= " r.elo, r.nb_games, r.nb_wins, r.current_streak, r.date_last_game";
@@ -173,7 +172,7 @@ class RankingRepository
 		$sql .= " LEFT JOIN ".$this->db->prefix()."babyfoot_rating as r";
 		$sql .= "   ON r.fk_user = u.rowid AND r.entity = ".((int) $this->entity);
 		$sql .= "   AND r.mode = '".$this->db->escape(BabyfootConfig::MODE_ALL)."'";
-		$sql .= " WHERE u.entity IN (".$entities.")";
+		$sql .= " WHERE ".$this->userScopeSql($userEntities);
 		$sql .= " AND u.statut = 1";
 		$sql .= " AND (u.fk_soc IS NULL OR u.fk_soc = 0)";
 		$sql .= " ORDER BY u.lastname ASC, u.firstname ASC, u.rowid ASC";
@@ -208,7 +207,7 @@ class RankingRepository
 	 * Find a user of the given entities by id, or by login when no id is given.
 	 *
 	 * User::fetch() by id ignores the entity: this lookup is what keeps the users
-	 * of another entity out of the API.
+	 * of another entity out of the API, with the same scope as userScopeSql().
 	 *
 	 * @param	string	$userEntities		Comma separated entity ids, as returned by getEntity('user')
 	 * @param	int		$userId				User id, 0 to search by login
@@ -222,10 +221,9 @@ class RankingRepository
 		if ($userId <= 0 && $login === '') {
 			return 0;
 		}
-		$entities = implode(',', array_map('intval', explode(',', $userEntities)));
 
 		$sql = "SELECT u.rowid FROM ".$this->db->prefix()."user as u";
-		$sql .= " WHERE u.entity IN (".$entities.")";
+		$sql .= " WHERE ".$this->userScopeSql($userEntities);
 		if ($userId > 0) {
 			$sql .= " AND u.rowid = ".((int) $userId);
 		} else {
@@ -245,6 +243,26 @@ class RankingRepository
 		$this->db->free($resql);
 
 		return $obj ? (int) $obj->rowid : 0;
+	}
+
+	/**
+	 * Build the condition restricting the alias u to the users of the current entity.
+	 *
+	 * In the transverse mode of Multicompany, getEntity('user') covers every entity:
+	 * a user then belongs to the entity through its groups, as in Form::select_dolusers().
+	 *
+	 * @param	string	$userEntities	Comma separated entity ids, as returned by getEntity('user')
+	 * @return	string					SQL condition, without leading AND
+	 */
+	private function userScopeSql(string $userEntities): string
+	{
+		if (isModEnabled('multicompany') && getDolGlobalInt('MULTICOMPANY_TRANSVERSE_MODE')) {
+			$groupEntities = implode(',', array_map('intval', explode(',', getEntity('usergroup'))));
+
+			return "u.rowid IN (SELECT ug.fk_user FROM ".$this->db->prefix()."usergroup_user as ug WHERE ug.entity IN (".$groupEntities."))";
+		}
+
+		return "u.entity IN (".implode(',', array_map('intval', explode(',', $userEntities))).")";
 	}
 
 	/**

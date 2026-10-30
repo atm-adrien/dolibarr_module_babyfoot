@@ -26,6 +26,7 @@ global $conf, $user, $langs, $db;
 require_once dirname(__FILE__).'/../../../../master.inc.php';
 require_once dirname(__FILE__).'/../../../../../test/phpunit/CommonClassTest.class.php';
 require_once DOL_DOCUMENT_ROOT.'/api/class/api_access.class.php';
+require_once DOL_DOCUMENT_ROOT.'/user/class/usergroup.class.php';
 require_once dirname(__FILE__).'/../../class/api_babyfoot.class.php';
 
 use Luracast\Restler\RestException;
@@ -502,5 +503,91 @@ class BabyfootApiTest extends CommonClassTest
 		$this->assertSame(403, $this->codeOf(function () use ($api) {
 			$api->getMe();
 		}));
+	}
+
+	/**
+	 * The lock sentinel row (fk_user = 0) is never a player.
+	 *
+	 * @return void
+	 */
+	public function testLockSentinelIsNeverAPlayer()
+	{
+		$api = $this->apiAs(['read', 'create']);
+		$api->postGame($this->validGameData());
+
+		$this->assertSame(404, $this->codeOf(function () use ($api) {
+			$api->getPlayer(0);
+		}));
+		$this->assertSame(404, $this->codeOf(function () use ($api) {
+			$api->getPlayerEloHistory(0, BabyfootConfig::MODE_ALL);
+		}));
+	}
+
+	/**
+	 * The data the mobile app displays: author name, rank per mode, bounded Elo history, prefill setting.
+	 *
+	 * @return void
+	 */
+	public function testMobileAppData()
+	{
+		$api = $this->apiAs(['read', 'create']);
+		$id = $api->postGame($this->validGameData());
+		$api->postGame($this->validGameData());
+
+		$this->assertNotSame('', $api->getGame($id)['user_creat_name']);
+		$this->assertIsBool($api->getMe()['prefill_current_user']);
+
+		$all = ((array) $api->getPlayer(2)['ratings'])[BabyfootConfig::MODE_ALL];
+		$this->assertGreaterThanOrEqual(1, $all['rank']);
+		$this->assertLessThanOrEqual($all['nb_players'], $all['rank']);
+
+		$full = $api->getPlayerEloHistory(2, BabyfootConfig::MODE_ALL, 0);
+		$last = $api->getPlayerEloHistory(2, BabyfootConfig::MODE_ALL, 1);
+		$this->assertCount(1, $last);
+		$this->assertSame(end($full), $last[0]);
+		$this->assertGreaterThan(0, $last[0]['fk_game']);
+	}
+
+	/**
+	 * Multicompany transverse mode: a user belongs to the entity through its groups, not its entity column.
+	 *
+	 * @return void
+	 */
+	public function testTransverseModeScopesPlayersByGroup()
+	{
+		global $conf, $db, $user;
+
+		$memberId = $this->makeUnplayableUser('foreign');
+		$group = new UserGroup($db);
+		$group->name = 'bfapitest'.uniqid();
+		$this->assertGreaterThan(0, $group->create($user));
+		$member = new User($db);
+		$member->fetch($memberId);
+		$this->assertGreaterThan(0, $member->SetInGroup($group->id, $conf->entity));
+
+		$loner = new User($db);
+		$loner->login = 'bfapitest'.uniqid();
+		$loner->lastname = 'Loner';
+		$this->assertGreaterThan(0, $loner->create($user));
+
+		$hadModule = !empty($conf->modules['multicompany']);
+		$hadConst = getDolGlobalString('MULTICOMPANY_TRANSVERSE_MODE');
+		$conf->modules['multicompany'] = 'multicompany';
+		$conf->global->MULTICOMPANY_TRANSVERSE_MODE = 1;
+		try {
+			$api = $this->apiAs(['read', 'create']);
+			$ids = array_column($api->listPlayers(), 'fk_user');
+			$this->assertContains($memberId, $ids);
+			$this->assertNotContains((int) $loner->id, $ids);
+
+			$repository = new RankingRepository($db, (int) $conf->entity);
+			$this->assertSame($memberId, $repository->findUserId(getEntity('user'), $memberId, '', true));
+			$this->assertSame(0, $repository->findUserId(getEntity('user'), (int) $loner->id, '', true));
+		} finally {
+			if (!$hadModule) {
+				unset($conf->modules['multicompany']);
+			}
+			$conf->global->MULTICOMPANY_TRANSVERSE_MODE = $hadConst;
+		}
 	}
 }

@@ -119,6 +119,8 @@ un tableau résolu, jamais `$conf`.
   `(string) $key === $period`, sinon aucune période n'est jamais sélectionnée.
 - **`User::fetch($id)` ne filtre pas l'entité** (seule la recherche par login le fait). Pour
   vérifier qu'un utilisateur appartient à l'entité, passer par `RankingRepository::findUserId()`.
+  En mode transverse de Multicompany, l'appartenance passe par les groupes (`usergroup_user`),
+  pas par `user.entity` : tout filtre d'utilisateurs passe par `RankingRepository::userScopeSql()`.
 - **La classe d'API s'appelle `Babyfoot`, pas `BabyfootApi`.** `api/index.php` déduit le nom de
   classe du premier segment d'URL : c'est ce qui sert les routes sous `/babyfoot/...`.
   Dans un test PHPUnit, renseigner `DolibarrApiAccess::$user` avant d'appeler une méthode.

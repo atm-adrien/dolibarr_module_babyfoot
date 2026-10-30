@@ -71,6 +71,8 @@ class PlayerStatsRepository
 		$sql .= " r.current_streak, r.best_streak, r.date_last_game";
 		$sql .= " FROM ".$this->db->prefix()."babyfoot_rating as r";
 		$sql .= " WHERE r.entity = ".((int) $this->entity);
+		// fk_user > 0 also excludes the sentinel lock row
+		$sql .= " AND r.fk_user > 0";
 		$sql .= " AND r.fk_user = ".((int) $userId);
 
 		$resql = $this->db->query($sql);
@@ -112,14 +114,15 @@ class PlayerStatsRepository
 	 *
 	 * @param	int		$userId		Rowid of the Dolibarr user
 	 * @param	string	$mode		'1v1', '2v2' or 'all'
-	 * @return	array				List of array{date:int, elo:int}
+	 * @param	int		$limit		Keep only the last games, 0 for the whole history
+	 * @return	array				List of array{date:int, elo:int, fk_game:int}, oldest first
 	 */
-	public function getEloHistory(int $userId, string $mode): array
+	public function getEloHistory(int $userId, string $mode, int $limit = 0): array
 	{
 		$history = array();
 		$column = ($mode === BabyfootConfig::MODE_ALL) ? 'gp.elo_all_after' : 'gp.elo_after';
 
-		$sql = "SELECT g.date_game, ".$column." as elo";
+		$sql = "SELECT g.rowid, g.date_game, ".$column." as elo";
 		$sql .= " FROM ".$this->db->prefix()."babyfoot_game_player as gp";
 		$sql .= " INNER JOIN ".$this->db->prefix()."babyfoot_game as g ON g.rowid = gp.fk_game";
 		$sql .= " WHERE g.entity = ".((int) $this->entity);
@@ -128,7 +131,10 @@ class PlayerStatsRepository
 		if ($mode !== BabyfootConfig::MODE_ALL) {
 			$sql .= " AND g.mode = '".$this->db->escape($mode)."'";
 		}
-		$sql .= " ORDER BY g.date_game ASC, g.rowid ASC";
+		$sql .= " ORDER BY g.date_game DESC, g.rowid DESC";
+		if ($limit > 0) {
+			$sql .= $this->db->plimit($limit, 0);
+		}
 
 		$resql = $this->db->query($sql);
 		if (!$resql) {
@@ -139,11 +145,12 @@ class PlayerStatsRepository
 			$history[] = array(
 				'date' => $this->db->jdate($obj->date_game),
 				'elo' => (int) $obj->elo,
+				'fk_game' => (int) $obj->rowid,
 			);
 		}
 		$this->db->free($resql);
 
-		return $history;
+		return array_reverse($history);
 	}
 
 	/**
